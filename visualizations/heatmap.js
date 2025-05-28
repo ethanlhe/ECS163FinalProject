@@ -22,73 +22,89 @@ export async function initHeatmap(container) {
         .style('border-radius', '5px')
         .style('pointer-events', 'none');
 
-    // Load and process data
-    const [geoData, gdpData] = await Promise.all([
-        d3.json('data/world.geojson'),
-        d3.csv('data/gdp.csv')
-    ]);
+    try {
+        // Load and process data
+        const [geoData, gdpData] = await Promise.all([
+            d3.json('data/world.geojson'),
+            d3.csv('data/global_gdp.csv')
+        ]);
 
-    // Filter GDP data for year 2000 and create a map for easy lookup
-    const gdpMap = new Map(
-        gdpData
-            .filter(d => d.year === year.toString())
-            .map(d => [d.country, +d.value])
-    );
+        // Convert GDP data to the format we need
+        const processedGdpData = gdpData.flatMap(row => {
+            const years = Object.keys(row).filter(key => !isNaN(+key) && +key >= 2000);
+            return years.map(year => ({
+                country: row['Country Name'],
+                year: +year,
+                value: row[year] === '..' ? null : +row[year]
+            }));
+        }).filter(d => d.value !== null);
 
-    // Create projection
-    const projection = d3.geoNaturalEarth1()
-        .fitSize([width, height], geoData);
+        // Filter GDP data for year 2000 and create a map for easy lookup
+        const gdpMap = new Map(
+            processedGdpData
+                .filter(d => d.year === year)
+                .map(d => [d.country, d.value])
+        );
 
-    // Create path generator
-    const path = d3.geoPath()
-        .projection(projection);
+        // Create projection
+        const projection = d3.geoNaturalEarth1()
+            .fitSize([width, height], geoData);
 
-    // Create color scale
-    const colorScale = d3.scaleSequential(d3.interpolateBlues)
-        .domain([0, d3.max(gdpMap.values())]);
+        // Create path generator
+        const path = d3.geoPath()
+            .projection(projection);
 
-    // Draw countries
-    svg.append('g')
-        .selectAll('path')
-        .data(geoData.features)
-        .enter()
-        .append('path')
-        .attr('d', path)
-        .attr('fill', d => {
-            const gdp = gdpMap.get(d.properties.name);
-            return gdp ? colorScale(gdp) : '#eee';
-        })
-        .attr('stroke', '#fff')
-        .attr('stroke-width', 0.5)
-        .on('mouseover', function(event, d) {
-            const gdp = gdpMap.get(d.properties.name);
-            if (gdp) {
+        // Create color scale
+        const colorScale = d3.scaleSequential(d3.interpolateBlues)
+            .domain([0, d3.max(gdpMap.values())]);
+
+        // Draw countries
+        svg.append('g')
+            .selectAll('path')
+            .data(geoData.features)
+            .enter()
+            .append('path')
+            .attr('d', path)
+            .attr('fill', d => {
+                const gdp = gdpMap.get(d.properties.name);
+                return gdp ? colorScale(gdp) : '#eee';
+            })
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 0.5)
+            .on('mouseover', function(event, d) {
+                const gdp = gdpMap.get(d.properties.name);
+                if (gdp) {
+                    tooltip.transition()
+                        .duration(200)
+                        .style('opacity', 0.9);
+                    tooltip.html(`
+                        <strong>${d.properties.name}</strong><br/>
+                        GDP (${year}): $${gdp.toLocaleString()}
+                    `)
+                        .style('left', (event.pageX + 10) + 'px')
+                        .style('top', (event.pageY - 28) + 'px');
+                }
+            })
+            .on('mouseout', function() {
                 tooltip.transition()
-                    .duration(200)
-                    .style('opacity', 0.9);
-                tooltip.html(`
-                    <strong>${d.properties.name}</strong><br/>
-                    GDP (${year}): $${gdp.toLocaleString()}
-                `)
-                    .style('left', (event.pageX + 10) + 'px')
-                    .style('top', (event.pageY - 28) + 'px');
-            }
-        })
-        .on('mouseout', function() {
-            tooltip.transition()
-                .duration(500)
-                .style('opacity', 0);
-        });
+                    .duration(500)
+                    .style('opacity', 0);
+            });
 
-    // Return visualization object
-    return {
-        update: (data) => {
-            // TODO: Implement data update logic
-            console.log('Updating heatmap with new data:', data);
-        },
-        resize: (newWidth, newHeight) => {
-            // TODO: Implement resize logic
-            console.log('Resizing heatmap:', newWidth, newHeight);
-        }
-    };
+        // Return visualization object
+        return {
+            update: (data) => {
+                // TODO: Implement data update logic
+                console.log('Updating heatmap with new data:', data);
+            },
+            resize: (newWidth, newHeight) => {
+                // TODO: Implement resize logic
+                console.log('Resizing heatmap:', newWidth, newHeight);
+            }
+        };
+    } catch (error) {
+        console.error('Error in heatmap initialization:', error);
+        container.innerHTML = '<p>Error loading visualization. Please check the console for details.</p>';
+        throw error;
+    }
 }
