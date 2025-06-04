@@ -1,5 +1,5 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
-import { loadAndCleanData } from "./dataLoader.js";
+import { loadAndCleanData } from "./data/dataLoader.js";
 
 export class InternetUsageBarChart {
     constructor() {
