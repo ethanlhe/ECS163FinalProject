@@ -1,4 +1,5 @@
 import { initHeatmap } from './visualizations/heatmap.js';
+import { initInternetMap } from './visualizations/internet.js';
 
 let currentVisualization = null;
 let currentYear = 2000;
@@ -72,8 +73,7 @@ async function loadVisualization(type) {
                 currentVisualization = await initHeatmap(container, currentYear);
                 break;
             case 'internet':
-                // TODO: Implement internet visualization
-                container.innerHTML = '<p>Internet Access visualization coming soon...</p>';
+                currentVisualization = await initInternetMap(container, currentYear);
                 break;
             default:
                 throw new Error('Unknown visualization type');

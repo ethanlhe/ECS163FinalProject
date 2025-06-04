@@ -1,10 +1,10 @@
-export async function initHeatmap(container, initialYear = 2000) {
+export async function initInternetMap(container, initialYear = 2000) {
     // Constants
     const width = 1400;
     const height = 500;
     let currentYear = initialYear;
 
-    // Country name mapping
+    // Country name mapping (reusing from heatmap.js)
     const countryNameMap = {
         'United States': 'USA',
         'United Kingdom': 'UK',
@@ -89,29 +89,29 @@ export async function initHeatmap(container, initialYear = 2000) {
 
     try {
         // Load and process data
-        const [geoData, gdpData] = await Promise.all([
+        const [geoData, internetData] = await Promise.all([
             d3.json('data/world.geojson'),
-            d3.csv('data/global_gdp.csv')
+            d3.csv('data/internet_usage.csv')
         ]);
 
-        // Convert GDP data to the format we need
-        const processedGdpData = gdpData.flatMap(row => {
+        // Convert Internet data to the format we need
+        const processedInternetData = internetData.flatMap(row => {
             const years = Object.keys(row).filter(key => !isNaN(+key) && +key >= 2000);
             return years.map(year => ({
                 country: row['Country Name'],
-                geoName: countryNameMap[row['Country Name']] || row['Country Name'], // Map to GeoJSON name
+                geoName: countryNameMap[row['Country Name']] || row['Country Name'],
                 year: +year,
                 value: row[year] === '..' ? null : +row[year]
             }));
         }).filter(d => d.value !== null);
 
         // Create a map of all years' data for quick lookup
-        const gdpDataMap = new Map();
-        processedGdpData.forEach(d => {
-            if (!gdpDataMap.has(d.geoName)) {
-                gdpDataMap.set(d.geoName, new Map());
+        const internetDataMap = new Map();
+        processedInternetData.forEach(d => {
+            if (!internetDataMap.has(d.geoName)) {
+                internetDataMap.set(d.geoName, new Map());
             }
-            gdpDataMap.get(d.geoName).set(d.year, d.value);
+            internetDataMap.get(d.geoName).set(d.year, d.value);
         });
 
         // Create projection
@@ -131,25 +131,19 @@ export async function initHeatmap(container, initialYear = 2000) {
             .attr('stroke', '#222')
             .attr('stroke-width', 0.7);
 
-        // Create color scale
-        const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
-            .domain([0, 1]); // Will be updated with actual data
+        // Create color scale (using a different color scheme for Internet access)
+        const colorScale = d3.scaleSequential(d3.interpolateViridis)
+            .domain([0, 100]); // Internet access is typically shown as percentage
 
         // Function to update the visualization
         function update(year) {
             currentYear = year;
             
-            // Get GDP data for the current year
-            const yearData = Array.from(gdpDataMap.entries()).map(([country, yearMap]) => ({
+            // Get Internet data for the current year
+            const yearData = Array.from(internetDataMap.entries()).map(([country, yearMap]) => ({
                 country,
                 value: yearMap.get(year)
             })).filter(d => d.value !== undefined);
-
-            // Calculate color scale domain
-            const values = yearData.map(d => d.value).sort((a, b) => a - b);
-            const p5 = d3.quantile(values, 0.05);
-            const p95 = d3.quantile(values, 0.95);
-            colorScale.domain([p5, p95]);
 
             // Update country colors
             countries
@@ -168,7 +162,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                         .style('opacity', 0.95);
                     tooltip.html(`
                         <strong>${originalName}</strong><br/>
-                        GDP (${year}): ${countryData ? ('$' + d3.format(',.2f')(countryData.value)) : 'No data'}
+                        Internet Access (${year}): ${countryData ? (d3.format('.1f')(countryData.value) + '%') : 'No data'}
                     `)
                         .style('left', (event.pageX + 10) + 'px')
                         .style('top', (event.pageY - 28) + 'px');
@@ -180,11 +174,11 @@ export async function initHeatmap(container, initialYear = 2000) {
                 });
 
             // Update legend
-            updateLegend(p5, p95);
+            updateLegend();
         }
 
         // Function to update the legend
-        function updateLegend(min, max) {
+        function updateLegend() {
             // Remove existing legend
             d3.select(container).selectAll('.legend-svg').remove();
 
@@ -207,7 +201,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 .data(d3.range(0, 1.01, 0.01))
                 .enter().append('stop')
                 .attr('offset', d => `${d * 100}%`)
-                .attr('stop-color', d => colorScale(min + d * (max - min)));
+                .attr('stop-color', d => colorScale(d * 100));
 
             // Add gradient rectangle
             legendSvg.append('rect')
@@ -223,20 +217,20 @@ export async function initHeatmap(container, initialYear = 2000) {
                 .attr('y', legendHeight + 18)
                 .attr('text-anchor', 'start')
                 .attr('font-size', '13px')
-                .text(`$${d3.format(',.2f')(min)}`);
+                .text('0%');
             legendSvg.append('text')
                 .attr('x', legendWidth)
                 .attr('y', legendHeight + 18)
                 .attr('text-anchor', 'end')
                 .attr('font-size', '13px')
-                .text(`$${d3.format(',.2f')(max)}`);
+                .text('100%');
             legendSvg.append('text')
                 .attr('x', legendWidth / 2)
                 .attr('y', legendHeight + 28)
                 .attr('text-anchor', 'middle')
                 .attr('font-size', '14px')
                 .attr('font-weight', 'bold')
-                .text(`GDP (US Dollars, ${currentYear})`);
+                .text(`Internet Access (${currentYear})`);
         }
 
         // Initial update
@@ -256,8 +250,8 @@ export async function initHeatmap(container, initialYear = 2000) {
             }
         };
     } catch (error) {
-        console.error('Error in heatmap initialization:', error);
+        console.error('Error in internet map initialization:', error);
         container.innerHTML = '<p>Error loading visualization. Please check the console for details.</p>';
         throw error;
     }
-}
+} 
