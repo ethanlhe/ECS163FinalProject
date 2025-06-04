@@ -1,8 +1,8 @@
-export async function initHeatmap(container) {
+export async function initHeatmap(container, initialYear = 2000) {
     // Constants
     const width = 1400;
     const height = 500;
-    const year = 2000;
+    let currentYear = initialYear;
 
     // Create SVG container (responsive)
     const svg = d3.select(container)
@@ -39,108 +39,148 @@ export async function initHeatmap(container) {
             }));
         }).filter(d => d.value !== null);
 
-        // Filter GDP data for year 2000 and create a map for easy lookup
-        const gdpYearData = processedGdpData.filter(d => d.year === year);
-        const gdpMap = new Map(gdpYearData.map(d => [d.country, d.value]));
+        // Create a map of all years' data for quick lookup
+        const gdpDataMap = new Map();
+        processedGdpData.forEach(d => {
+            if (!gdpDataMap.has(d.country)) {
+                gdpDataMap.set(d.country, new Map());
+            }
+            gdpDataMap.get(d.country).set(d.year, d.value);
+        });
 
-        // Calculate 5th and 95th percentiles for color scale domain
-        const gdpValues = gdpYearData.map(d => d.value).sort((a, b) => a - b);
-        const p5 = d3.quantile(gdpValues, 0.05);
-        const p95 = d3.quantile(gdpValues, 0.95);
+        // Create projection
+        const projection = d3.geoNaturalEarth1()
+            .fitSize([width, height], geoData);
 
-        // Create color scale (high contrast)
-        const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
-            .domain([p5, p95]);
+        // Create path generator
+        const path = d3.geoPath().projection(projection);
 
         // Draw countries
-        svg.append('g')
+        const countries = svg.append('g')
             .selectAll('path')
             .data(geoData.features)
             .enter()
             .append('path')
-            .attr('d', d3.geoPath().projection(d3.geoNaturalEarth1().fitSize([width, height], geoData)))
-            .attr('fill', d => {
-                const gdp = gdpMap.get(d.properties.name);
-                return gdp ? colorScale(gdp) : '#bbb'; // darker gray for missing data
-            })
+            .attr('d', path)
             .attr('stroke', '#222')
-            .attr('stroke-width', 0.7)
-            .on('mouseover', function(event, d) {
-                const gdp = gdpMap.get(d.properties.name);
-                tooltip.transition()
-                    .duration(200)
-                    .style('opacity', 0.95);
-                tooltip.html(`
-                    <strong>${d.properties.name}</strong><br/>
-                    GDP (${year}): ${gdp ? ('$' + gdp.toLocaleString()) : 'No data'}
-                `)
-                    .style('left', (event.pageX + 10) + 'px')
-                    .style('top', (event.pageY - 28) + 'px');
-            })
-            .on('mouseout', function() {
-                tooltip.transition()
-                    .duration(500)
-                    .style('opacity', 0);
-            });
+            .attr('stroke-width', 0.7);
 
-        // Add a color legend
-        const legendWidth = 300;
-        const legendHeight = 16;
-        const legendMargin = 30;
-        const legendSvg = d3.select(container)
-            .append('svg')
-            .attr('width', legendWidth)
-            .attr('height', legendHeight + 30)
-            .style('display', 'block')
-            .style('margin', '30px auto 0 auto');
+        // Create color scale
+        const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
+            .domain([0, 1]); // Will be updated with actual data
 
-        // Create a gradient for the legend
-        const defs = legendSvg.append('defs');
-        const linearGradient = defs.append('linearGradient')
-            .attr('id', 'legend-gradient');
-        linearGradient.selectAll('stop')
-            .data(d3.range(0, 1.01, 0.01))
-            .enter().append('stop')
-            .attr('offset', d => `${d * 100}%`)
-            .attr('stop-color', d => colorScale(p5 + d * (p95 - p5)));
+        // Function to update the visualization
+        function update(year) {
+            currentYear = year;
+            
+            // Get GDP data for the current year
+            const yearData = Array.from(gdpDataMap.entries()).map(([country, yearMap]) => ({
+                country,
+                value: yearMap.get(year)
+            })).filter(d => d.value !== undefined);
 
-        legendSvg.append('rect')
-            .attr('x', 0)
-            .attr('y', 0)
-            .attr('width', legendWidth)
-            .attr('height', legendHeight)
-            .style('fill', 'url(#legend-gradient)');
+            // Calculate color scale domain
+            const values = yearData.map(d => d.value).sort((a, b) => a - b);
+            const p5 = d3.quantile(values, 0.05);
+            const p95 = d3.quantile(values, 0.95);
+            colorScale.domain([p5, p95]);
 
-        // Add min and max labels
-        legendSvg.append('text')
-            .attr('x', 0)
-            .attr('y', legendHeight + 18)
-            .attr('text-anchor', 'start')
-            .attr('font-size', '13px')
-            .text(`$${Math.round(p5).toLocaleString()}`);
-        legendSvg.append('text')
-            .attr('x', legendWidth)
-            .attr('y', legendHeight + 18)
-            .attr('text-anchor', 'end')
-            .attr('font-size', '13px')
-            .text(`$${Math.round(p95).toLocaleString()}`);
-        legendSvg.append('text')
-            .attr('x', legendWidth / 2)
-            .attr('y', legendHeight + 28)
-            .attr('text-anchor', 'middle')
-            .attr('font-size', '14px')
-            .attr('font-weight', 'bold')
-            .text('GDP (US Dollars, 2000)');
+            // Update country colors
+            countries
+                .attr('fill', d => {
+                    const countryData = yearData.find(c => c.country === d.properties.name);
+                    return countryData ? colorScale(countryData.value) : '#bbb';
+                });
+
+            // Update tooltip content
+            countries
+                .on('mouseover', function(event, d) {
+                    const countryData = yearData.find(c => c.country === d.properties.name);
+                    tooltip.transition()
+                        .duration(200)
+                        .style('opacity', 0.95);
+                    tooltip.html(`
+                        <strong>${d.properties.name}</strong><br/>
+                        GDP (${year}): ${countryData ? ('$' + countryData.value.toLocaleString()) : 'No data'}
+                    `)
+                        .style('left', (event.pageX + 10) + 'px')
+                        .style('top', (event.pageY - 28) + 'px');
+                });
+
+            // Update legend
+            updateLegend(p5, p95);
+        }
+
+        // Function to update the legend
+        function updateLegend(min, max) {
+            // Remove existing legend
+            d3.select(container).selectAll('.legend-svg').remove();
+
+            const legendWidth = 300;
+            const legendHeight = 16;
+            const legendMargin = 30;
+            const legendSvg = d3.select(container)
+                .append('svg')
+                .attr('class', 'legend-svg')
+                .attr('width', legendWidth)
+                .attr('height', legendHeight + 30)
+                .style('display', 'block')
+                .style('margin', '30px auto 0 auto');
+
+            // Create gradient
+            const defs = legendSvg.append('defs');
+            const linearGradient = defs.append('linearGradient')
+                .attr('id', 'legend-gradient');
+            linearGradient.selectAll('stop')
+                .data(d3.range(0, 1.01, 0.01))
+                .enter().append('stop')
+                .attr('offset', d => `${d * 100}%`)
+                .attr('stop-color', d => colorScale(min + d * (max - min)));
+
+            // Add gradient rectangle
+            legendSvg.append('rect')
+                .attr('x', 0)
+                .attr('y', 0)
+                .attr('width', legendWidth)
+                .attr('height', legendHeight)
+                .style('fill', 'url(#legend-gradient)');
+
+            // Add labels
+            legendSvg.append('text')
+                .attr('x', 0)
+                .attr('y', legendHeight + 18)
+                .attr('text-anchor', 'start')
+                .attr('font-size', '13px')
+                .text(`$${Math.round(min).toLocaleString()}`);
+            legendSvg.append('text')
+                .attr('x', legendWidth)
+                .attr('y', legendHeight + 18)
+                .attr('text-anchor', 'end')
+                .attr('font-size', '13px')
+                .text(`$${Math.round(max).toLocaleString()}`);
+            legendSvg.append('text')
+                .attr('x', legendWidth / 2)
+                .attr('y', legendHeight + 28)
+                .attr('text-anchor', 'middle')
+                .attr('font-size', '14px')
+                .attr('font-weight', 'bold')
+                .text(`GDP (US Dollars, ${currentYear})`);
+        }
+
+        // Initial update
+        update(currentYear);
 
         // Return visualization object
         return {
             update: (data) => {
-                // TODO: Implement data update logic
-                console.log('Updating heatmap with new data:', data);
+                if (data.year) {
+                    update(data.year);
+                }
             },
             resize: (newWidth, newHeight) => {
-                // TODO: Implement resize logic
-                console.log('Resizing heatmap:', newWidth, newHeight);
+                // Update projection and path
+                projection.fitSize([newWidth, newHeight], geoData);
+                countries.attr('d', path);
             }
         };
     } catch (error) {
