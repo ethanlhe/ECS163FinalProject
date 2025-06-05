@@ -3,20 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GDP vs Internet Access Visualization</title>
+    <title>GDP vs Internet Access Interactive Dashboard</title>
     <link rel="stylesheet" href="styles/styles.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
     <div class="dashboard">
         <header class="dashboard-header">
-            <h1>GDP vs Internet Access</h1>
+            <h1>GDP vs Internet Access Interactive Dashboard</h1>
         </header>
         <div class="map-toolbar">
             <!-- The toggle button and year slider will be injected here by JS -->
         </div>
         <main class="dashboard-main">
-            <section id="vis-container" aria-label="Data Visualization"></section>
+            <div class="dashboard-container">
+                <!-- Left panel: Heatmap -->
+                <section class="heatmap-panel" aria-label="World Map Visualization">
+                    <div id="heatmap-container"></div>
+                </section>
+                
+                <!-- Right panel: Bar chart and Streamgraph -->
+                <section class="charts-panel" aria-label="Supporting Visualizations">
+                    <div class="chart-section">
+                        <h3 class="chart-title">Internet Usage by Continent</h3>
+                        <div id="barchart-container"></div>
+                    </div>
+                    <div class="chart-section">
+                        <h3 class="chart-title">GDP vs Internet Trends</h3>
+                        <div id="streamgraph-container"></div>
+                    </div>
+                </section>
+            </div>
         </main>
     </div>
     <script type="module" src="main.js"></script>

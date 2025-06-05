@@ -30,42 +30,30 @@ export class InternetUsageBarChart {
         };
     }
 
-    init() {
+    async init() {
         this.createSVG();
         this.createTooltip();
-        this.loadData();
+        await this.loadData();
 
         window.addEventListener('resize', this.debouncedResize);
     }
 
     calculateDimensions() {
-        // Get the container dimensions
-        const container = document.getElementById('chart-container');
-        if (!container) return;
-        
-        const containerWidth = container.clientWidth;
-        const containerHeight = Math.min(containerWidth * 0.6, 600); // Maintain aspect ratio
-        
-        // Calculate new dimensions with responsive margins
-        const isMobile = containerWidth < 768;
-        this.margin = isMobile 
-            ? { top: 40, right: 20, bottom: 60, left: 40 }
-            : { top: 60, right: 60, bottom: 80, left: 80 };
-            
-        this.width = containerWidth - this.margin.left - this.margin.right;
-        this.height = containerHeight - this.margin.top - this.margin.bottom;
+        // This will be overridden in main.js for dashboard integration
+        return;
     }
     
     handleResize() {
         this.calculateDimensions();
         
         // Update SVG dimensions
-        d3.select("#chart-container svg")
-            .attr("width", this.width + this.margin.left + this.margin.right)
+        this.svg.attr("width", this.width + this.margin.left + this.margin.right)
             .attr("height", this.height + this.margin.top + this.margin.bottom);
             
         // Update chart group transform
-        this.chartGroup.attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+        if (this.chartGroup) {
+            this.chartGroup.attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+        }
             
         // Redraw if we have data
         if (this.currentData) {
@@ -74,22 +62,20 @@ export class InternetUsageBarChart {
     }
 
     createSVG() {
-        this.svg = d3.select("#chart")
-            .append("svg")
-            .attr("width", this.width + this.margin.left + this.margin.right)
-            .attr("height", this.height + this.margin.top + this.margin.bottom)
-            .append("g")
-            .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+        // This will be overridden in main.js for dashboard integration
+        return;
     }
 
     createTooltip() {
-        this.tooltip = d3.select("#tooltip")
+        this.tooltip = d3.select("body").append("div")
+            .attr("class", "tooltip")
             .style("opacity", 0)
             .style("position", "absolute")
             .style("background", "#fff")
-            .style("padding", "5px")
+            .style("padding", "8px 12px")
             .style("border", "1px solid #ccc")
-            .style("border-radius", "4px");
+            .style("border-radius", "4px")
+            .style("pointer-events", "none");
     }
 
     async loadData() {
@@ -108,8 +94,8 @@ export class InternetUsageBarChart {
 
             const wideData = Object.values(wideDataMap);
             const processed = this.processData(wideData);
+            this.currentData = processed;
             this.drawChart(processed);
-            this.createLegend();
         } catch (err) {
             console.error("Error loading data:", err);
             this.showError("Failed to load or process data.");
@@ -335,48 +321,21 @@ export class InternetUsageBarChart {
             .style("opacity", 0);
     }
 
-    createLegend() {
-        const legend = d3.select("#legend");
-        legend.html(""); // Clear any existing legend
-
-        const years = ["2000", "2023"];
-        const colors = years.map(year => ({
-            year,
-            color: this.yearColor(year)
-        }));
-
-        const legendItems = legend.selectAll(".legend-item")
-            .data(colors)
-            .enter()
-            .append("div")
-            .attr("class", "legend-item")
-            .style("display", "flex")
-            .style("align-items", "center")
-            .style("margin-right", "15px");
-
-        legendItems.append("div")
-            .style("width", "15px")
-            .style("height", "15px")
-            .style("background-color", d => d.color)
-            .style("margin-right", "5px");
-
-        legendItems.append("span")
-            .text(d => d.year);
-    }
-
     showError(message) {
-        d3.select("#chart").append("div")
-            .attr("class", "error-message")
-            .text(message);
+        if (this.svg) {
+            this.svg.append("text")
+                .attr("class", "error-message")
+                .attr("x", this.width / 2)
+                .attr("y", this.height / 2)
+                .attr("text-anchor", "middle")
+                .text(message);
+        }
     }
 
     destroy() {
         window.removeEventListener('resize', this.debouncedResize);
+        if (this.tooltip) {
+            this.tooltip.remove();
+        }
     }
 }
-
-// Initialize chart when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    const chart = new InternetUsageBarChart();
-    chart.init();
-});

@@ -148,32 +148,24 @@ export class InternetGDPStreamGraph {
         this.handleResize = this.handleResize.bind(this);
     }
 
-    init() {
+    async init() {
         this.createSVG();
         this.createTooltip();
-        this.setupToggleButton();
-        this.loadData();
+        await this.loadData();
 
         window.addEventListener('resize', this.handleResize);
     }
 
     calculateDimensions() {
-        // Get the container dimensions
-        const container = document.getElementById('chart');
-        const containerWidth = container.clientWidth;
-        const containerHeight = Math.min(containerWidth * 0.6, 600); // Maintain aspect ratio
-        
-        // Calculate new dimensions
-        this.width = containerWidth - this.margin.left - this.margin.right;
-        this.height = containerHeight - this.margin.top - this.margin.bottom;
+        // This will be overridden in main.js for dashboard integration
+        return;
     }
 
     handleResize() {
         this.calculateDimensions();
         
         // Update SVG dimensions
-        d3.select("#chart svg")
-            .attr("width", this.width + this.margin.left + this.margin.right)
+        this.svg.attr("width", this.width + this.margin.left + this.margin.right)
             .attr("height", this.height + this.margin.top + this.margin.bottom);
             
         // Redraw if we have data
@@ -183,34 +175,20 @@ export class InternetGDPStreamGraph {
     }
 
     createSVG() {
-        this.svg = d3.select("#chart")
-            .append("svg")
-            .attr("width", this.width + this.margin.left + this.margin.right)
-            .attr("height", this.height + this.margin.top + this.margin.bottom)
-            .append("g")
-            .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+        // This will be overridden in main.js for dashboard integration
+        return;
     }
 
     createTooltip() {
         this.tooltip = d3.select("body").append("div")
             .attr("class", "tooltip")
-            .style("opacity", 0);
-    }
-
-    setupToggleButton() {
-        d3.select("#ratioToggle")
-            .on("click", () => {
-                this.currentRatioType = this.currentRatioType === 'internetOverGDP' 
-                    ? 'gdpOverInternet' 
-                    : 'internetOverGDP';
-                
-                d3.select("#ratioToggle")
-                    .text(this.currentRatioType === 'internetOverGDP' 
-                        ? "Switch to GDP / Internet" 
-                        : "Switch to Internet / GDP");
-                
-                this.loadData();
-            });
+            .style("opacity", 0)
+            .style("position", "absolute")
+            .style("background", "#fff")
+            .style("padding", "8px 12px")
+            .style("border", "1px solid #ccc")
+            .style("border-radius", "4px")
+            .style("pointer-events", "none");
     }
 
     async loadData() {
@@ -218,7 +196,6 @@ export class InternetGDPStreamGraph {
             const { gdpData, internetData } = await loadAndCleanData();
             const processed = this.processRatioData(gdpData, internetData);
             this.drawStreamGraph(processed);
-            this.createLegend();
         } catch (err) {
             console.error("Error loading data:", err);
             this.showError("Failed to load or process data.");
@@ -365,37 +342,20 @@ export class InternetGDPStreamGraph {
             .text(yLabel);
     }
 
-    createLegend() {
-        const legend = d3.select("#legend").html("");
-        const continents = ["Asia", "Europe", "North America", "South America", "Africa", "Oceania"];
-
-        continents.forEach(continent => {
-            const item = legend.append("div")
-                .attr("class", "legend-item");
-
-            item.append("div")
-                .attr("class", "legend-color")
-                .style("background-color", this.continentColor(continent));
-
-            item.append("div").text(continent);
-        });
-    }
-
     showError(message) {
-        this.svg.append("text")
-            .attr("x", this.width / 2)
-            .attr("y", this.height / 2)
-            .attr("text-anchor", "middle")
-            .text(message);
+        if (this.svg) {
+            this.svg.append("text")
+                .attr("x", this.width / 2)
+                .attr("y", this.height / 2)
+                .attr("text-anchor", "middle")
+                .text(message);
+        }
     }
 
     destroy() {
         window.removeEventListener('resize', this.handleResize);
+        if (this.tooltip) {
+            this.tooltip.remove();
+        }
     }
 }
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    const graph = new InternetGDPStreamGraph();
-    graph.init();
-});

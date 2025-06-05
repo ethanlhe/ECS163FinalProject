@@ -7,8 +7,8 @@ export async function initHeatmap(container, initialYear = 2000) {
     document.querySelector('.map-toolbar').appendChild(toggleBtn);
 
     // Constants
-    const width = 1400;
-    const height = 500;
+    const width = Math.min(container.clientWidth, 1400);
+    const height = Math.min(container.clientHeight * 0.8, 500);
     let currentYear = initialYear;
     let currentMode = 'gdp'; // 'gdp' or 'internet'
 
@@ -47,16 +47,29 @@ export async function initHeatmap(container, initialYear = 2000) {
         'Yemen, Rep.': 'Yemen'
     };
 
+    // Reverse mapping for getting original country names
+    const reverseCountryNameMap = {};
+    Object.entries(countryNameMap).forEach(([original, geo]) => {
+        reverseCountryNameMap[geo] = original;
+    });
+
     // Helper function to get the correct country name
     function getCountryName(country) {
         return countryNameMap[country] || country;
+    }
+
+    // Helper function to get original country name from geo name
+    function getOriginalCountryName(geoName) {
+        return reverseCountryNameMap[geoName] || geoName;
     }
 
     // Create SVG container (responsive)
     const svg = d3.select(container)
         .append('svg')
         .attr('class', 'responsive-svg')
-        .attr('viewBox', `0 0 ${width} ${height}`);
+        .attr('viewBox', `0 0 ${width} ${height}`)
+        .style('width', '100%')
+        .style('height', 'auto');
 
     // Add pattern for "no data"
     svg.append('defs').append('pattern')
@@ -143,7 +156,8 @@ export async function initHeatmap(container, initialYear = 2000) {
             .append('path')
             .attr('d', path)
             .attr('stroke', '#222')
-            .attr('stroke-width', 0.7);
+            .attr('stroke-width', 0.7)
+            .style('cursor', 'pointer');
 
         // Custom interpolator: green (low) to blue (high)
         const customInterpolator = d3.interpolateRgbBasis(["#b7e075", "#4fa49a", "#2171b5"]);
@@ -189,11 +203,20 @@ export async function initHeatmap(container, initialYear = 2000) {
                     return countryData ? colorScale(countryData.value) : noDataFill;
                 });
 
-            // Update tooltip content
+            // Update tooltip content and add interaction coordination
             countries
                 .on('mouseover', function(event, d) {
                     const countryData = yearData.find(c => c.country === getCountryName(d.properties.name));
-                    const originalName = Object.entries(countryNameMap).find(([_, geoName]) => geoName === d.properties.name)?.[0] || d.properties.name;
+                    const originalName = getOriginalCountryName(d.properties.name);
+                    
+                    // Highlight this country on the map
+                    d3.select(this).classed('country-highlighted', true);
+                    
+                    // Update other charts for this country
+                    if (typeof window.updateChartsForCountry === 'function') {
+                        window.updateChartsForCountry(originalName);
+                    }
+                    
                     tooltip.transition()
                         .duration(200)
                         .style('opacity', 0.95);
@@ -204,7 +227,15 @@ export async function initHeatmap(container, initialYear = 2000) {
                         .style('left', (event.pageX + 10) + 'px')
                         .style('top', (event.pageY - 28) + 'px');
                 })
-                .on('mouseout', function() {
+                .on('mouseout', function(event, d) {
+                    // Remove highlighting from this country
+                    d3.select(this).classed('country-highlighted', false);
+                    
+                    // Reset other charts
+                    if (typeof window.resetCharts === 'function') {
+                        window.resetCharts();
+                    }
+                    
                     tooltip.transition()
                         .duration(500)
                         .style('opacity', 0);
@@ -295,7 +326,11 @@ export async function initHeatmap(container, initialYear = 2000) {
                 }
             },
             resize: (newWidth, newHeight) => {
-                projection.fitSize([newWidth, newHeight], geoData);
+                const actualWidth = Math.min(newWidth, 1400);
+                const actualHeight = Math.min(newHeight * 0.8, 500);
+                
+                svg.attr('viewBox', `0 0 ${actualWidth} ${actualHeight}`);
+                projection.fitSize([actualWidth, actualHeight], geoData);
                 countries.attr('d', path);
             }
         };

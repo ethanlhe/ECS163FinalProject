@@ -2,10 +2,10 @@ import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 export async function loadAndCleanData() {
     try {
-        // Load both datasets
+        // Load both datasets with corrected paths for main dashboard
         const [gdpData, internetData] = await Promise.all([
-            d3.csv('../data/global_gdp.csv'),
-            d3.csv('../data/internet_usage.csv')
+            d3.csv('data/global_gdp.csv'),
+            d3.csv('data/internet_usage.csv')
         ]);
 
         // Function to convert wide format to long format
