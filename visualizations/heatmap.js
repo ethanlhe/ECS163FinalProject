@@ -385,41 +385,190 @@ export async function initHeatmap(container, initialYear = 2000) {
                 showOnlyReal: modalShowOnlyRealCountries
             };
 
-            // --- Helper to get country value for display (2020 value for bar, current year for neighbor selection) ---
-            function getCountryValue2020(c) {
+            // --- Modal time slider state ---
+            // Get available years from data (restrict to 2000-2020)
+            const allYears = Array.from(new Set([
+                ...Array.from(gdpDataMap.values()).flatMap(m => Array.from(m.keys())),
+                ...Array.from(internetDataMap.values()).flatMap(m => Array.from(m.keys())),
+            ])).filter(y => y >= 2000 && y <= 2020).sort((a, b) => a - b);
+            let sliderState = {
+                start: allYears[0],
+                end: allYears[allYears.length - 1]
+            };
+
+            // --- Render time slider (dual slider with number inputs) ---
+            function renderTimeSlider() {
+                const minYear = allYears[0];
+                const maxYear = allYears[allYears.length - 1];
+                // Inject slider styles (only once)
+                if (!document.getElementById('modalRangeSliderStyles')) {
+                    const style = document.createElement('style');
+                    style.id = 'modalRangeSliderStyles';
+                    style.textContent = `
+                    .range_container { display: flex; flex-direction: row; align-items: center; width: 100%; margin: 0 0 18px 0; }
+                    .sliders_control { position: relative; min-height: 50px; flex: 1; margin: 0 18px; }
+                    .form_control { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+                    .form_control_container { display: flex; flex-direction: column; align-items: center; }
+                    .form_control_container__time { font-size: 15px; color: #635a5a; margin-bottom: 2px; }
+                    .form_control_container__time__input { color: #8a8383; width: 60px; height: 30px; font-size: 18px; border: none; text-align: center; background: #f7f7f7; border-radius: 6px; }
+                    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: all; width: 20px; height: 20px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 0 1px #C6C6C6; cursor: pointer; }
+                    input[type=range]::-moz-range-thumb { pointer-events: all; width: 20px; height: 20px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 0 1px #C6C6C6; cursor: pointer; }
+                    input[type=range]::-webkit-slider-thumb:hover { background: #f7f7f7; }
+                    input[type=range]::-webkit-slider-thumb:active { box-shadow: inset 0 0 3px #387bbe, 0 0 9px #387bbe; }
+                    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { opacity: 1; }
+                    input[type=range] { -webkit-appearance: none; appearance: none; height: 2px; width: 100%; position: absolute; background-color: #C6C6C6; pointer-events: none; }
+                    #fromSlider { height: 0; z-index: 1; }
+                    `;
+                    document.head.appendChild(style);
+                }
+                // HTML for single-row slider + inputs
+                const sliderHtml = `
+                    <div class="range_container">
+                        <div class="form_control_container">
+                            <div class="form_control_container__time">Start</div>
+                            <input class="form_control_container__time__input" type="number" id="fromInput" value="${sliderState.start}" min="${minYear}" max="${maxYear - 1}">
+                        </div>
+                        <div class="sliders_control">
+                            <input id="fromSlider" type="range" min="${minYear}" max="${maxYear}" value="${sliderState.start}" step="1">
+                            <input id="toSlider" type="range" min="${minYear}" max="${maxYear}" value="${sliderState.end}" step="1">
+                        </div>
+                        <div class="form_control_container">
+                            <div class="form_control_container__time">End</div>
+                            <input class="form_control_container__time__input" type="number" id="toInput" value="${sliderState.end}" min="${minYear + 1}" max="${maxYear}">
+                        </div>
+                    </div>
+                `;
+                modalContent.querySelector('#modalTimeSliderContainer').innerHTML = sliderHtml;
+
+                // Dual slider logic (same as before)
+                function getParsed(currentFrom, currentTo) {
+                    const from = parseInt(currentFrom.value, 10);
+                    const to = parseInt(currentTo.value, 10);
+                    return [from, to];
+                }
+                function fillSlider(from, to, sliderColor, rangeColor, controlSlider) {
+                    const rangeDistance = to.max - to.min;
+                    const fromPosition = from.value - to.min;
+                    const toPosition = to.value - to.min;
+                    controlSlider.style.background = `linear-gradient(
+                      to right,
+                      ${sliderColor} 0%,
+                      ${sliderColor} ${(fromPosition)/(rangeDistance)*100}%,
+                      ${rangeColor} ${((fromPosition)/(rangeDistance))*100}%,
+                      ${rangeColor} ${(toPosition)/(rangeDistance)*100}%, 
+                      ${sliderColor} ${(toPosition)/(rangeDistance)*100}%, 
+                      ${sliderColor} 100%)`;
+                }
+                function setToggleAccessible(currentTarget) {
+                    const toSlider = modalContent.querySelector('#toSlider');
+                    if (Number(currentTarget.value) <= 0 ) {
+                        toSlider.style.zIndex = 2;
+                    } else {
+                        toSlider.style.zIndex = 0;
+                    }
+                }
+                function controlFromInput(fromSlider, fromInput, toInput, controlSlider) {
+                    const [from, to] = getParsed(fromInput, toInput);
+                    fillSlider(fromInput, toInput, '#C6C6C6', '#2171b5', controlSlider);
+                    if (from > to) {
+                        fromSlider.value = to;
+                        fromInput.value = to;
+                    } else {
+                        fromSlider.value = from;
+                    }
+                    sliderState.start = Math.min(from, to - 1);
+                    renderSidebar();
+                    updateCharts();
+                }
+                function controlToInput(toSlider, fromInput, toInput, controlSlider) {
+                    const [from, to] = getParsed(fromInput, toInput);
+                    fillSlider(fromInput, toInput, '#C6C6C6', '#2171b5', controlSlider);
+                    setToggleAccessible(toInput);
+                    if (from <= to) {
+                        toSlider.value = to;
+                        toInput.value = to;
+                    } else {
+                        toInput.value = from;
+                    }
+                    sliderState.end = Math.max(to, from + 1);
+                    renderSidebar();
+                    updateCharts();
+                }
+                function controlFromSlider(fromSlider, toSlider, fromInput) {
+                    const [from, to] = getParsed(fromSlider, toSlider);
+                    fillSlider(fromSlider, toSlider, '#C6C6C6', '#2171b5', toSlider);
+                    if (from > to) {
+                        fromSlider.value = to;
+                        fromInput.value = to;
+                    } else {
+                        fromInput.value = from;
+                    }
+                    sliderState.start = Math.min(from, to - 1);
+                    renderSidebar();
+                    updateCharts();
+                }
+                function controlToSlider(fromSlider, toSlider, toInput) {
+                    const [from, to] = getParsed(fromSlider, toSlider);
+                    fillSlider(fromSlider, toSlider, '#C6C6C6', '#2171b5', toSlider);
+                    setToggleAccessible(toSlider);
+                    if (from <= to) {
+                        toSlider.value = to;
+                        toInput.value = to;
+                    } else {
+                        toInput.value = from;
+                        toSlider.value = from;
+                    }
+                    sliderState.end = Math.max(to, from + 1);
+                    renderSidebar();
+                    updateCharts();
+                }
+                // Attach event listeners
+                const fromSlider = modalContent.querySelector('#fromSlider');
+                const toSlider = modalContent.querySelector('#toSlider');
+                const fromInput = modalContent.querySelector('#fromInput');
+                const toInput = modalContent.querySelector('#toInput');
+                fillSlider(fromSlider, toSlider, '#C6C6C6', '#2171b5', toSlider);
+                setToggleAccessible(toSlider);
+                fromSlider.oninput = () => controlFromSlider(fromSlider, toSlider, fromInput);
+                toSlider.oninput = () => controlToSlider(fromSlider, toSlider, toInput);
+                fromInput.oninput = () => controlFromInput(fromSlider, fromInput, toInput, toSlider);
+                toInput.oninput = () => controlToInput(toSlider, fromInput, toInput, toSlider);
+            }
+
+            // --- Helper to get country value for display (end year for bar, current year for neighbor selection) ---
+            function getCountryValueForBar(c) {
                 let v;
                 if (currentMode === 'gdp') {
-                    v = (gdpDataMap.get(c) && gdpDataMap.get(c).get(2020)) || null;
+                    v = (gdpDataMap.get(c) && gdpDataMap.get(c).get(sliderState.end)) || null;
                     return v == null ? 'No data' : formatGDP(v);
                 } else {
-                    v = (internetDataMap.get(c) && internetDataMap.get(c).get(2020)) || null;
+                    v = (internetDataMap.get(c) && internetDataMap.get(c).get(sliderState.end)) || null;
                     return v == null ? 'No data' : (d3.format('.1f')(v) + '%');
                 }
             }
-            // For bar: get 2020 value (for all countries)
-            function getBarValue2020(c) {
+            // For bar: get end year value (for all countries)
+            function getBarValueForEndYear(c) {
                 if (currentMode === 'gdp') {
-                    return (gdpDataMap.get(c) && gdpDataMap.get(c).get(2020)) || null;
+                    return (gdpDataMap.get(c) && gdpDataMap.get(c).get(sliderState.end)) || null;
                 } else {
-                    return (internetDataMap.get(c) && internetDataMap.get(c).get(2020)) || null;
+                    return (internetDataMap.get(c) && internetDataMap.get(c).get(sliderState.end)) || null;
                 }
             }
-            // For bar: get min/max for 2020 (log scale)
-            let allBarValues2020 = countryList.map(getBarValue2020).filter(v => v != null && v > 0);
-            let barMin = Math.min(...allBarValues2020);
-            let barMax = Math.max(...allBarValues2020);
+            // For bar: get min/max for end year (log scale)
+            let allBarValuesEndYear = countryList.map(getBarValueForEndYear).filter(v => v != null && v > 0);
+            let barMin = Math.min(...allBarValuesEndYear);
+            let barMax = Math.max(...allBarValuesEndYear);
             const minBarWidth = 12; // percent, for nonzero values
-            // For log scale
             let logBarMin = Math.log10(barMin);
             let logBarMax = Math.log10(barMax);
 
             // --- Helper to get value for sorting ---
             function getSortValue(c, metric) {
                 if (metric === 'gdp') {
-                    let v = (gdpDataMap.get(c) && gdpDataMap.get(c).get(2020)) || null;
+                    let v = (gdpDataMap.get(c) && gdpDataMap.get(c).get(sliderState.end)) || null;
                     return v == null ? -Infinity : v;
                 } else if (metric === 'internet') {
-                    let v = (internetDataMap.get(c) && internetDataMap.get(c).get(2020)) || null;
+                    let v = (internetDataMap.get(c) && internetDataMap.get(c).get(sliderState.end)) || null;
                     return v == null ? -Infinity : v;
                 }
                 return c;
@@ -435,7 +584,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 // Map to objects with value
                 let mapped = filtered.map(c => ({
                     name: c,
-                    val: getBarValue2020(c)
+                    val: getBarValueForEndYear(c)
                 }));
                 // Sort
                 if (sidebarState.sort === 'name') {
@@ -457,13 +606,12 @@ export async function initHeatmap(container, initialYear = 2000) {
                             <input id='countrySearchInput' type='text' placeholder='Search...' style='flex:1;padding:4px 8px;border:1px solid #bbb;border-radius:4px;' value="${sidebarState.search}">
                             <select id='countrySortSelect' style='padding:4px 8px;border:1px solid #bbb;border-radius:4px;'>
                                 <option value='name' ${sidebarState.sort === 'name' ? 'selected' : ''}>Name</option>
-                                <option value='gdp' ${sidebarState.sort === 'gdp' ? 'selected' : ''}>GDP (2020)</option>
-                                <option value='internet' ${sidebarState.sort === 'internet' ? 'selected' : ''}>Internet Usage (2020)</option>
+                                <option value='gdp' ${sidebarState.sort === 'gdp' ? 'selected' : ''}>GDP (${sliderState.end})</option>
+                                <option value='internet' ${sidebarState.sort === 'internet' ? 'selected' : ''}>Internet Usage (${sliderState.end})</option>
                             </select>
                         </div>
                         <div style='margin-bottom:10px;display:flex;align-items:center;gap:10px;'>
                             <a href='#' id='clearCountries' style='font-size:0.98em;'>Clear</a>
-
                         </div>
                         <form id='countrySelectForm'>
                             <div style='max-height:55vh;overflow-y:auto;'>
@@ -486,7 +634,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                                             <input type='checkbox' name='country' value='${c.name.replace(/'/g, "&apos;")}' ${sidebarState.selected.has(c.name) ? 'checked' : ''}>
                                             <span>${c.name}</span>
                                         </label>
-                                        <span style='font-size:0.98em;color:#555;min-width:70px;display:inline-block;text-align:right;'>${getCountryValue2020(c.name)}</span>
+                                        <span style='font-size:0.98em;color:#555;min-width:70px;display:inline-block;text-align:right;'>${getCountryValueForBar(c.name)}</span>
                                         <div style='flex:0 0 80px;height:10px;background:#eee;border-radius:5px;overflow:hidden;margin-left:8px;position:relative;'>
                                             <div style='height:100%;width:${barWidth}%;background:${barColor};'></div>
                                         </div>
@@ -500,10 +648,23 @@ export async function initHeatmap(container, initialYear = 2000) {
                 modalContent.querySelector('#modalSidebarContainer').innerHTML = sidebarHtml;
             }
 
+            // --- Chart containers and update function ---
+            function renderChartContainers() {
+                modalContent.querySelector('#lineTabPlaceholder').innerHTML = `<div id='modalLineChart' style='width:100%;height:340px;'></div>`;
+                modalContent.querySelector('#slopeTabPlaceholder').innerHTML = `<div id='modalSlopeChart' style='width:100%;height:340px;'></div>`;
+            }
+            function updateCharts() {
+                // Placeholder for now
+                const checked = Array.from(modalContent.querySelectorAll('input[name=country]:checked')).map(cb => cb.value);
+                modalContent.querySelector('#modalLineChart').innerHTML = `<div style='text-align:center;padding-top:120px;color:#888;'>Line chart for <b>${checked.join(', ')}</b> (${sliderState.start}–${sliderState.end}) (coming soon)</div>`;
+                modalContent.querySelector('#modalSlopeChart').innerHTML = `<div style='text-align:center;padding-top:120px;color:#888;'>Slope chart for <b>${checked.join(', ')}</b> (${sliderState.start}–${sliderState.end}) (coming soon)</div>`;
+            }
+
             // --- Main content HTML (tabs) ---
             const mainContentHtml = `
                 <div style='flex:1;padding-left:32px;min-width:0;'>
                     <div id='metricToggleContainer'></div>
+                    <div id='modalTimeSliderContainer'></div>
                     <div id="modalTabs" style="display:flex;gap:16px;margin-bottom:18px;">
                         <button class="modal-tab active" data-tab="line" style="padding:8px 20px;border:none;border-bottom:2px solid #2171b5;background:none;font-size:1.1em;cursor:pointer;outline:none;">Line</button>
                         <button class="modal-tab" data-tab="slope" style="padding:8px 20px;border:none;border-bottom:2px solid transparent;background:none;font-size:1.1em;cursor:pointer;outline:none;">Slope</button>
@@ -522,14 +683,17 @@ export async function initHeatmap(container, initialYear = 2000) {
             // --- Layout: sidebar + main content ---
             modalContent.innerHTML = `
                 <div style='display:flex;align-items:flex-start;'>
-                    <div id='modalSidebarContainer' style='min-width:270px;'></div>
+                    <div id='modalSidebarContainer' style='min-width:400px;'></div>
                     ${mainContentHtml}
                 </div>
             `;
             modalOverlay.style.display = 'flex';
 
-            // --- Render sidebar for the first time ---
+            // --- Render sidebar, time slider, and chart containers for the first time ---
             renderSidebar();
+            renderTimeSlider();
+            renderChartContainers();
+            updateCharts();
 
             // --- Metric toggle (above tabs) ---
             const metricToggleHtml = `
@@ -605,6 +769,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                     }
                     renderSidebar();
                     updatePlaceholders();
+                    updateCharts();
                 }
             });
 
