@@ -26,6 +26,21 @@ Built with D3.js and vanilla JavaScript, the visualization offers an engaging ex
 2. Right-click on `index.html` and select "Open with Live Server"
 3. The visualization will open in your default web browser
 
+### Alternative: Using Python's Built-in Server
+If you prefer not to use VS Code's Live Server, you can use Python's built-in HTTP server:
+1. Open a terminal/command prompt in the project directory
+2. Run the following command:
+   ```bash
+   python -m http.server 8000
+   ```
+3. Open your web browser and navigate to `http://localhost:8000`
+4. To stop the server, press `Ctrl+C` in the terminal
+
+Note: If port 8000 is already in use, you can specify a different port number:
+```bash
+python -m http.server 8080
+```
+
 ## Using the Visualization
 
 ### Main Map View
