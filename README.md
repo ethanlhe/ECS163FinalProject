@@ -1,6 +1,11 @@
 # Global GDP and Internet Usage Visualization
 
-An interactive visualization that explores the relationship between GDP and Internet usage across countries over time.
+An interactive data visualization tool that explores how GDP and internet usage have evolved across countries from 2000 to 2020. This project helps users analyze global development trends using dynamic charts and a world map interface.
+
+## 📦 Description
+This tool was designed to bridge the gap between economic and digital development. Users can explore data in various formats—such as line charts, slope graphs, and a choropleth map—making it easy to spot correlations, trends, and outliers.
+
+Built with D3.js and vanilla JavaScript, the visualization offers an engaging experience for both technical and non-technical users. Whether you're comparing internet adoption across regions or analyzing GDP growth over time, this tool provides clear, interactive insights.
 
 ## Getting Started
 
