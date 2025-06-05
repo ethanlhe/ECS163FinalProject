@@ -1,3 +1,6 @@
+import { createLineChart } from './linechart.js';
+import { createSlopeChart } from './slopechart.js';
+
 export async function initHeatmap(container, initialYear = 2000) {
     container.innerHTML = '';
     // Add toggle button
@@ -684,150 +687,12 @@ export async function initHeatmap(container, initialYear = 2000) {
                     return;
                 }
 
-                // Fixed chart size
-                const width = 600;
-                const height = 340;
-                const margin = {top: 30, right: 120, bottom: 50, left: 80};
-                const innerWidth = width - margin.left - margin.right;
-                const innerHeight = height - margin.top - margin.bottom;
-
-                const svg = d3.select(lineChartDiv)
-                    .append('svg')
-                    .attr('width', width)
-                    .attr('height', height);
-
-                // X/Y scales
-                const x = d3.scaleLinear()
-                    .domain([sliderState.start, sliderState.end])
-                    .range([margin.left, width - margin.right]);
-
-                const allValues = countryData.flatMap(d => d.values.map(v => v.value));
-                const y = d3.scaleLinear()
-                    .domain([0, d3.max(allValues) * 1.1]) // Add 10% padding
-                    .nice()
-                    .range([height - margin.bottom, margin.top]);
-
-                // Color scale
-                const color = d3.scaleOrdinal(d3.schemeCategory10).domain(checked);
-
-                // Grid lines
-                svg.append('g')
-                    .attr('class', 'grid')
-                    .attr('transform', `translate(0,0)`)
-                    .selectAll('line')
-                    .data(y.ticks(6))
-                    .enter()
-                    .append('line')
-                    .attr('x1', margin.left)
-                    .attr('x2', width - margin.right)
-                    .attr('y1', d => y(d))
-                    .attr('y2', d => y(d))
-                    .attr('stroke', '#e0e0e0')
-                    .attr('stroke-width', 1);
-
-                // Axes
-                svg.append('g')
-                    .attr('transform', `translate(0,${height - margin.bottom})`)
-                    .call(d3.axisBottom(x).tickFormat(d3.format('d')).tickSizeOuter(0))
-                    .call(g => g.select('.domain').attr('stroke','#bbb'))
-                    .call(g => g.selectAll('text').attr('font-size','13px').attr('fill','#444'));
-
-                svg.append('g')
-                    .attr('transform', `translate(${margin.left},0)`)
-                    .call(d3.axisLeft(y)
-                        .tickFormat(currentMode === 'gdp' ? d3.format("$~s") : d3.format(".2~s"))
-                        .ticks(6)
-                        .tickSizeOuter(0)
-                    )
-                    .call(g => g.select('.domain').attr('stroke','#bbb'))
-                    .call(g => g.selectAll('text').attr('font-size','13px').attr('fill','#444'));
-
-                // Y label
-                svg.append('text')
-                    .attr('transform', 'rotate(-90)')
-                    .attr('y', 18)
-                    .attr('x', -height/2)
-                    .attr('text-anchor', 'middle')
-                    .attr('font-size', '14px')
-                    .attr('fill', '#444')
-                    .text(currentMode === 'gdp' ? 'GDP (US Dollars)' : 'Internet Usage (%)');
-
-                // Line generator
-                const line = d3.line()
-                    .defined(d => d.value != null)
-                    .x(d => x(d.year))
-                    .y(d => y(d.value));
-
-                // Draw lines
-                countryData.forEach(d => {
-                    svg.append('path')
-                        .datum(d.values)
-                        .attr('fill', 'none')
-                        .attr('stroke', color(d.country))
-                        .attr('stroke-width', 2.5)
-                        .attr('d', line);
+                // Create line chart
+                createLineChart(lineChartDiv, countryData, {
+                    currentMode,
+                    formatGDP,
+                    sliderState
                 });
-
-                // Draw points and tooltip events (smaller points)
-                countryData.forEach(d => {
-                    svg.selectAll('.dot-' + d.country.replace(/\W/g, ''))
-                        .data(d.values)
-                        .enter()
-                        .append('circle')
-                        .attr('class', 'linechart-dot')
-                        .attr('cx', v => x(v.year))
-                        .attr('cy', v => y(v.value))
-                        .attr('r', 2.5)
-                        .attr('fill', color(d.country))
-                        .on('mouseover', function(event, v) {
-                            const containerRect = lineChartDiv.getBoundingClientRect();
-                            const svgRect = svg.node().getBoundingClientRect();
-                            let left = event.clientX - svgRect.left + margin.left + 10;
-                            let top = event.clientY - svgRect.top - 30;
-                            // Clamp right edge
-                            const tooltipWidth = 160;
-                            if (left + tooltipWidth > width) left = width - tooltipWidth - 10;
-                            if (left < 0) left = 0;
-                            if (top < 0) top = 0;
-                            tooltip.style('left', left + 'px').style('top', top + 'px');
-                            tooltip.transition().duration(100).style('opacity', 0.97);
-                            tooltip.html(`<b>${d.country}</b><br>Year: ${v.year}<br>Value: ${currentMode === 'gdp' ? formatGDP(v.value) : (d3.format('.1f')(v.value) + '%')}`);
-                        })
-                        .on('mouseout', function() {
-                            tooltip.transition().duration(200).style('opacity', 0);
-                        });
-                });
-
-                // Draw legend (vertical, right side, not overlapping)
-                const legend = svg.append('g')
-                    .attr('transform', `translate(${width - margin.right + 20},${margin.top})`);
-                checked.forEach((country, i) => {
-                    const legendItem = legend.append('g')
-                        .attr('transform', `translate(0,${i * 22})`);
-                    legendItem.append('circle')
-                        .attr('r', 7)
-                        .attr('fill', color(country));
-                    legendItem.append('text')
-                        .attr('x', 15)
-                        .attr('y', 5)
-                        .attr('font-size', '14px')
-                        .attr('fill', '#444')
-                        .text(country);
-                });
-
-                // Tooltip
-                const tooltip = d3.select(lineChartDiv)
-                    .append('div')
-                    .attr('class', 'linechart-tooltip')
-                    .style('position', 'absolute')
-                    .style('background', '#fff')
-                    .style('border', '1px solid #bbb')
-                    .style('padding', '7px 12px')
-                    .style('border-radius', '6px')
-                    .style('pointer-events', 'none')
-                    .style('opacity', 0)
-                    .style('box-shadow', '0 2px 8px rgba(0,0,0,0.1)')
-                    .style('font-size', '13px');
 
                 // --- SLOPE CHART ---
                 const slopeChartDiv = modalContent.querySelector('#modalSlopeChart');
@@ -837,6 +702,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                     slopeChartDiv.innerHTML = `<div style='text-align:center;padding-top:120px;color:#888;'>Select at least one country</div>`;
                     return;
                 }
+
                 // Prepare data for slope chart
                 const slopeData = checked.map(country => {
                     let startVal = (currentMode === 'gdp')
@@ -853,141 +719,18 @@ export async function initHeatmap(container, initialYear = 2000) {
                         endVal
                     };
                 }).filter(d => d.startVal != null && d.endVal != null);
+
                 if (slopeData.length === 0) {
                     slopeChartDiv.innerHTML = `<div style='text-align:center;padding-top:120px;color:#888;'>No data available for selected countries in this time range</div>`;
                     return;
                 }
-                // Chart dimensions
-                const widthSlope = 600;
-                const heightSlope = 340;
-                const marginSlope = {top: 30, right: 120, bottom: 50, left: 80};
-                // Y scale (same as line chart)
-                const allSlopeVals = slopeData.flatMap(d => [d.startVal, d.endVal]);
-                const ySlope = d3.scaleLinear()
-                    .domain([0, d3.max(allSlopeVals) * 1.1])
-                    .nice()
-                    .range([heightSlope - marginSlope.bottom, marginSlope.top]);
-                // X scale: just two points
-                const xSlope = d3.scalePoint()
-                    .domain([sliderState.start, sliderState.end])
-                    .range([marginSlope.left, widthSlope - marginSlope.right]);
-                // Color
-                const colorSlope = d3.scaleOrdinal(d3.schemeCategory10).domain(checked);
-                // SVG
-                const svgSlope = d3.select(slopeChartDiv)
-                    .append('svg')
-                    .attr('width', widthSlope)
-                    .attr('height', heightSlope);
-                // Y axis
-                svgSlope.append('g')
-                    .attr('transform', `translate(${marginSlope.left},0)`)
-                    .call(d3.axisLeft(ySlope)
-                        .tickFormat(currentMode === 'gdp' ? d3.format("$~s") : d3.format(".2~s"))
-                        .ticks(6)
-                        .tickSizeOuter(0)
-                    )
-                    .call(g => g.select('.domain').attr('stroke','#bbb'))
-                    .call(g => g.selectAll('text').attr('font-size','13px').attr('fill','#444'));
-                // X axis
-                svgSlope.append('g')
-                    .attr('transform', `translate(0,${heightSlope - marginSlope.bottom})`)
-                    .call(d3.axisBottom(xSlope)
-                        .tickFormat(d3.format('d'))
-                        .tickSizeOuter(0)
-                    )
-                    .call(g => g.select('.domain').attr('stroke','#bbb'))
-                    .call(g => g.selectAll('text').attr('font-size','13px').attr('fill','#444'));
-                // Grid lines
-                svgSlope.append('g')
-                    .attr('class', 'grid')
-                    .attr('transform', `translate(0,0)`)
-                    .selectAll('line')
-                    .data(ySlope.ticks(6))
-                    .enter()
-                    .append('line')
-                    .attr('x1', marginSlope.left)
-                    .attr('x2', widthSlope - marginSlope.right)
-                    .attr('y1', d => ySlope(d))
-                    .attr('y2', d => ySlope(d))
-                    .attr('stroke', '#e0e0e0')
-                    .attr('stroke-width', 1);
-                // Slope lines
-                svgSlope.selectAll('.slope-line')
-                    .data(slopeData)
-                    .enter()
-                    .append('line')
-                    .attr('class', 'slope-line')
-                    .attr('x1', d => xSlope(d.start))
-                    .attr('y1', d => ySlope(d.startVal))
-                    .attr('x2', d => xSlope(d.end))
-                    .attr('y2', d => ySlope(d.endVal))
-                    .attr('stroke', d => colorSlope(d.country))
-                    .attr('stroke-width', 2.5);
-                // Dots
-                svgSlope.selectAll('.slope-dot-start')
-                    .data(slopeData)
-                    .enter()
-                    .append('circle')
-                    .attr('class', 'slope-dot-start')
-                    .attr('cx', d => xSlope(d.start))
-                    .attr('cy', d => ySlope(d.startVal))
-                    .attr('r', 4)
-                    .attr('fill', d => colorSlope(d.country));
-                svgSlope.selectAll('.slope-dot-end')
-                    .data(slopeData)
-                    .enter()
-                    .append('circle')
-                    .attr('class', 'slope-dot-end')
-                    .attr('cx', d => xSlope(d.end))
-                    .attr('cy', d => ySlope(d.endVal))
-                    .attr('r', 4)
-                    .attr('fill', d => colorSlope(d.country));
-                // Labels (country name at end)
-                svgSlope.selectAll('.slope-label')
-                    .data(slopeData)
-                    .enter()
-                    .append('text')
-                    .attr('class', 'slope-label')
-                    .attr('x', d => xSlope(d.end) + 8)
-                    .attr('y', d => ySlope(d.endVal) + 5)
-                    .attr('font-size', '14px')
-                    .attr('fill', d => colorSlope(d.country))
-                    .attr('font-weight', 'bold')
-                    .text(d => d.country);
-                // Tooltip
-                const tooltipSlope = d3.select(slopeChartDiv)
-                    .append('div')
-                    .attr('class', 'slopechart-tooltip')
-                    .style('position', 'absolute')
-                    .style('background', '#fff')
-                    .style('border', '1px solid #bbb')
-                    .style('padding', '7px 12px')
-                    .style('border-radius', '6px')
-                    .style('pointer-events', 'none')
-                    .style('opacity', 0)
-                    .style('box-shadow', '0 2px 8px rgba(0,0,0,0.1)')
-                    .style('font-size', '13px');
-                // Tooltip events for dots
-                svgSlope.selectAll('.slope-dot-start, .slope-dot-end')
-                    .on('mouseover', function(event, d) {
-                        const containerRect = slopeChartDiv.getBoundingClientRect();
-                        const svgRect = svgSlope.node().getBoundingClientRect();
-                        let left = event.clientX - svgRect.left + marginSlope.left + 10;
-                        let top = event.clientY - svgRect.top - 30;
-                        // Clamp right edge
-                        const tooltipWidth = 160;
-                        if (left + tooltipWidth > widthSlope) left = widthSlope - tooltipWidth - 10;
-                        if (left < 0) left = 0;
-                        if (top < 0) top = 0;
-                        tooltipSlope.style('left', left + 'px').style('top', top + 'px');
-                        tooltipSlope.transition().duration(100).style('opacity', 0.97);
-                        const year = d3.select(this).classed('slope-dot-start') ? d.start : d.end;
-                        const value = d3.select(this).classed('slope-dot-start') ? d.startVal : d.endVal;
-                        tooltipSlope.html(`<b>${d.country}</b><br>Year: ${year}<br>Value: ${currentMode === 'gdp' ? formatGDP(value) : (d3.format('.1f')(value) + '%')}`);
-                    })
-                    .on('mouseout', function() {
-                        tooltipSlope.transition().duration(200).style('opacity', 0);
-                    });
+
+                // Create slope chart
+                createSlopeChart(slopeChartDiv, slopeData, {
+                    currentMode,
+                    formatGDP,
+                    sliderState
+                });
             }
 
             // --- Main content HTML (tabs) ---
