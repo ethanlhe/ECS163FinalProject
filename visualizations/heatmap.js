@@ -11,6 +11,17 @@ export async function initHeatmap(container, initialYear = 2000) {
     toggleBtn.textContent = 'Switch to Internet Usage';
     document.querySelector('.map-toolbar').appendChild(toggleBtn);
 
+    // Add mode indicator
+    let modeIndicator = document.createElement('span');
+    modeIndicator.id = 'mapModeIndicator';
+    modeIndicator.textContent = 'Mode: GDP';
+    modeIndicator.style.fontWeight = 'bold';
+    modeIndicator.style.fontSize = '1.1em';
+    modeIndicator.style.color = '#5525c4';
+    modeIndicator.style.marginRight = '10px';
+    const mapToolbar = document.querySelector('.map-toolbar');
+    mapToolbar.insertBefore(modeIndicator, toggleBtn);
+
     // Constants
     const width = 1400;
     const height = 500;
@@ -220,7 +231,7 @@ export async function initHeatmap(container, initialYear = 2000) {
             .attr('stroke-width', 0.7);
 
         // Custom interpolator: green (low) to blue (high)
-        const customInterpolator = d3.interpolateRgbBasis(["#b7e075", "#4fa49a", "#2171b5"]);
+        const customInterpolator = d3.interpolateRgbBasis(["#80B192", "#36453B", "#5525c4"]);
         let colorScaleGdp = d3.scaleSequential(customInterpolator).domain([gdpP10, gdpP90]);
         let colorScaleInternet = d3.scaleSequential(customInterpolator).domain([internetP10, internetP90]);
 
@@ -271,7 +282,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                     
                     // Highlight hovered country
                     d3.select(this)
-                        .attr('stroke', '#5525c4')
+                        .attr('stroke', '#000000')
                         .attr('stroke-width', 2);
                     
                     tooltip.transition()
@@ -280,7 +291,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                     tooltip.html(`
                         <strong>${originalName}</strong><br/>
                         ${currentMode === 'gdp' ? 'GDP' : 'Internet Access'} (${year}): ${tooltipValue(countryData ? countryData.value : null)}<br/>
-                        <span style="color: #2171b5; font-size: 0.9em; cursor: pointer;">Click to show more details</span>
+                        <span style="color: #5525c4; font-size: 0.9em; cursor: pointer;">Click to show more details</span>
                     `)
                         .style('left', (event.pageX + 10) + 'px')
                         .style('top', (event.pageY - 28) + 'px');
@@ -303,6 +314,11 @@ export async function initHeatmap(container, initialYear = 2000) {
 
             // Update legend
             updateLegend(legendMin, legendMax, legendFormat, legendTitle);
+
+            // Update mode indicator text
+            if (modeIndicator) {
+                modeIndicator.textContent = 'Mode: ' + (currentMode === 'gdp' ? 'GDP' : 'Internet Usage');
+            }
         }
 
         // Function to update the legend
@@ -431,7 +447,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                     .modal-range-slider::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: all; width: 20px; height: 20px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 0 1px #C6C6C6; cursor: pointer; }
                     .modal-range-slider::-moz-range-thumb { pointer-events: all; width: 20px; height: 20px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 0 1px #C6C6C6; cursor: pointer; }
                     .modal-range-slider::-webkit-slider-thumb:hover { background: #f7f7f7; }
-                    .modal-range-slider::-webkit-slider-thumb:active { box-shadow: inset 0 0 3px #387bbe, 0 0 9px #387bbe; }
+                    .modal-range-slider::-webkit-slider-thumb:active { box-shadow: inset 0 0 3px #5525c4, 0 0 9px #5525c4; }
                     input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { opacity: 1; }
                     .modal-range-slider { -webkit-appearance: none; appearance: none; height: 2px; width: 100%; position: absolute; background-color: #C6C6C6; pointer-events: none; }
                     #fromSlider.modal-range-slider { height: 0; z-index: 1; }
@@ -486,7 +502,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 }
                 function controlFromInput(fromSlider, fromInput, toInput, controlSlider) {
                     const [from, to] = getParsed(fromInput, toInput);
-                    fillSlider(fromInput, toInput, '#C6C6C6', '#2171b5', controlSlider);
+                    fillSlider(fromInput, toInput, '#C6C6C6', '#5525c4', controlSlider);
                     if (from > to) {
                         fromSlider.value = to;
                         fromInput.value = to;
@@ -499,7 +515,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 }
                 function controlToInput(toSlider, fromInput, toInput, controlSlider) {
                     const [from, to] = getParsed(fromInput, toInput);
-                    fillSlider(fromInput, toInput, '#C6C6C6', '#2171b5', controlSlider);
+                    fillSlider(fromInput, toInput, '#C6C6C6', '#5525c4', controlSlider);
                     setToggleAccessible(toInput);
                     if (from <= to) {
                         toSlider.value = to;
@@ -513,7 +529,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 }
                 function controlFromSlider(fromSlider, toSlider, fromInput) {
                     const [from, to] = getParsed(fromSlider, toSlider);
-                    fillSlider(fromSlider, toSlider, '#C6C6C6', '#2171b5', toSlider);
+                    fillSlider(fromSlider, toSlider, '#C6C6C6', '#5525c4', toSlider);
                     if (from > to) {
                         fromSlider.value = to;
                         fromInput.value = to;
@@ -526,7 +542,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 }
                 function controlToSlider(fromSlider, toSlider, toInput) {
                     const [from, to] = getParsed(fromSlider, toSlider);
-                    fillSlider(fromSlider, toSlider, '#C6C6C6', '#2171b5', toSlider);
+                    fillSlider(fromSlider, toSlider, '#C6C6C6', '#5525c4', toSlider);
                     setToggleAccessible(toSlider);
                     if (from <= to) {
                         toSlider.value = to;
@@ -544,7 +560,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 const toSlider = modalContent.querySelector('#toSlider');
                 const fromInput = modalContent.querySelector('#fromInput');
                 const toInput = modalContent.querySelector('#toInput');
-                fillSlider(fromSlider, toSlider, '#C6C6C6', '#2171b5', toSlider);
+                fillSlider(fromSlider, toSlider, '#C6C6C6', '#5525c4', toSlider);
                 setToggleAccessible(toSlider);
                 fromSlider.oninput = () => controlFromSlider(fromSlider, toSlider, fromInput);
                 toSlider.oninput = () => controlToSlider(fromSlider, toSlider, toInput);
@@ -642,9 +658,9 @@ export async function initHeatmap(container, initialYear = 2000) {
                                     } else if (barVal != null && barVal > 0) {
                                         barWidth = minBarWidth;
                                     }
-                                    let barColor = currentMode === 'gdp' ? '#2171b5' : '#4fa49a';
+                                    let barColor = currentMode === 'gdp' ? '#5525c4' : '#4fa49a';
                                     // Highlight main selected country
-                                    let highlight = c.name === selectedCountry ? 'background: #e6f0fa; border-left: 4px solid #2171b5; font-weight: bold;' : '';
+                                    let highlight = c.name === selectedCountry ? 'background: #e6f0fa; border-left: 4px solid #5525c4; font-weight: bold;' : '';
                                     return `
                                     <div style='display:flex;align-items:center;justify-content:space-between;padding:2px 0;${highlight}'>
                                         <label style='cursor:pointer;display:flex;align-items:center;gap:6px;'>
@@ -787,7 +803,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                     <div id='metricToggleContainer'></div>
                     <div id='modalTimeSliderContainer'></div>
                     <div id="modalTabs" style="display:flex;gap:16px;margin-bottom:18px;">
-                        <button class="modal-tab active" data-tab="line" style="padding:8px 20px;border:none;border-bottom:2px solid #2171b5;background:none;font-size:1.1em;cursor:pointer;outline:none;">Line</button>
+                        <button class="modal-tab active" data-tab="line" style="padding:8px 20px;border:none;border-bottom:2px solid #5525c4;background:none;font-size:1.1em;cursor:pointer;outline:none;">Line</button>
                         <button class="modal-tab" data-tab="slope" style="padding:8px 20px;border:none;border-bottom:2px solid transparent;background:none;font-size:1.1em;cursor:pointer;outline:none;">Slope</button>
                         <button class="modal-tab" data-tab="stream" style="padding:8px 20px;border:none;border-bottom:2px solid transparent;background:none;font-size:1.1em;cursor:pointer;outline:none;">Stream</button>
                         <button class="modal-tab" data-tab="bar" style="padding:8px 20px;border:none;border-bottom:2px solid transparent;background:none;font-size:1.1em;cursor:pointer;outline:none;">Bar</button>
@@ -827,8 +843,8 @@ export async function initHeatmap(container, initialYear = 2000) {
             // --- Metric toggle (above tabs) ---
             const metricToggleHtml = `
                 <div style='margin-bottom:18px;text-align:center;'>
-                    <button id='modalMetricToggle' style='padding:7px 22px;font-size:1em;border-radius:18px;border:1px solid #2171b5;background:${currentMode === 'gdp' ? '#2171b5' : 'white'};color:${currentMode === 'gdp' ? 'white' : '#2171b5'};margin-right:8px;cursor:pointer;'>GDP</button>
-                    <button id='modalMetricToggleInternet' style='padding:7px 22px;font-size:1em;border-radius:18px;border:1px solid #2171b5;background:${currentMode === 'internet' ? '#2171b5' : 'white'};color:${currentMode === 'internet' ? 'white' : '#2171b5'};cursor:pointer;'>Internet Usage</button>
+                    <button id='modalMetricToggle' style='padding:7px 22px;font-size:1em;border-radius:18px;border:1px solid #5525c4;background:${currentMode === 'gdp' ? '#5525c4' : 'white'};color:${currentMode === 'gdp' ? 'white' : '#5525c4'};margin-right:8px;cursor:pointer;'>GDP</button>
+                    <button id='modalMetricToggleInternet' style='padding:7px 22px;font-size:1em;border-radius:18px;border:1px solid #5525c4;background:${currentMode === 'internet' ? '#5525c4' : 'white'};color:${currentMode === 'internet' ? 'white' : '#5525c4'};cursor:pointer;'>Internet Usage</button>
                 </div>
             `;
             modalContent.querySelector('#metricToggleContainer').innerHTML = metricToggleHtml;
@@ -845,7 +861,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                     });
                     // Add active class and set border for clicked button
                     btn.classList.add('active');
-                    btn.style.borderBottom = '2px solid #2171b5';
+                    btn.style.borderBottom = '2px solid #5525c4';
                     
                     // Show/hide content
                     tabContents.forEach(tc => {
@@ -943,6 +959,9 @@ export async function initHeatmap(container, initialYear = 2000) {
         toggleBtn.addEventListener('click', () => {
             currentMode = currentMode === 'gdp' ? 'internet' : 'gdp';
             toggleBtn.textContent = currentMode === 'gdp' ? 'Switch to Internet Usage' : 'Switch to GDP';
+            if (modeIndicator) {
+                modeIndicator.textContent = 'Mode: ' + (currentMode === 'gdp' ? 'GDP' : 'Internet Usage');
+            }
             update(currentYear);
         });
 
