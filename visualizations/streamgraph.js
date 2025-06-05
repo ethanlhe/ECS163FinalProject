@@ -1,12 +1,14 @@
 import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
-import { loadAndCleanData } from './data/dataLoader.js';
+import { loadAndCleanData } from '../data/dataLoader.js';
 
 export class InternetGDPStreamGraph {
     constructor() {
         this.margin = { top: 100, right: 60, bottom: 200, left: 60 };
-        this.width = 1000 - this.margin.left - this.margin.right;
-        this.height = 600 - this.margin.top - this.margin.bottom;
+        this.width = 1000;
+        this.height = 500;
         this.currentRatioType = 'internetOverGDP'; // Default ratio type
+
+        this.currentData = null;
 
         this.continentColor = d3.scaleOrdinal()
             .domain(["Asia", "Europe", "North America", "South America", "Africa", "Oceania"])
@@ -142,6 +144,8 @@ export class InternetGDPStreamGraph {
       'EUU': 'Europe', 'LCN': 'South America', 'MEA': 'Asia', 'NAC': 'North America',
       'OED': 'Europe', 'PSS': 'Oceania', 'SAS': 'Asia', 'SSF': 'Africa'
         };
+
+        this.handleResize = this.handleResize.bind(this);
     }
 
     init() {
@@ -149,6 +153,33 @@ export class InternetGDPStreamGraph {
         this.createTooltip();
         this.setupToggleButton();
         this.loadData();
+
+        window.addEventListener('resize', this.handleResize);
+    }
+
+    calculateDimensions() {
+        // Get the container dimensions
+        const container = document.getElementById('chart');
+        const containerWidth = container.clientWidth;
+        const containerHeight = Math.min(containerWidth * 0.6, 600); // Maintain aspect ratio
+        
+        // Calculate new dimensions
+        this.width = containerWidth - this.margin.left - this.margin.right;
+        this.height = containerHeight - this.margin.top - this.margin.bottom;
+    }
+
+    handleResize() {
+        this.calculateDimensions();
+        
+        // Update SVG dimensions
+        d3.select("#chart svg")
+            .attr("width", this.width + this.margin.left + this.margin.right)
+            .attr("height", this.height + this.margin.top + this.margin.bottom);
+            
+        // Redraw if we have data
+        if (this.currentData) {
+            this.drawStreamGraph(this.currentData);
+        }
     }
 
     createSVG() {
@@ -250,6 +281,9 @@ export class InternetGDPStreamGraph {
     }
 
     drawStreamGraph(data) {
+
+        this.currentData = data;
+
         this.svg.selectAll("*").remove();
 
         const continents = ["Asia", "Europe", "North America", "South America", "Africa", "Oceania"];
@@ -287,12 +321,13 @@ export class InternetGDPStreamGraph {
             .attr("stroke", "#fff")
             .attr("stroke-width", 0.5)
             .on("mouseover", (event, d) => {
-                const value = this.currentRatioType === 'internetOverGDP'
+
+                    const value = this.currentRatioType === 'internetOverGDP'
                     ? (d[1] - d[0]).toFixed(4)
                     : (1/(d[1] - d[0])).toFixed(2);
                 
                 this.tooltip.transition().duration(200).style("opacity", 0.9);
-                this.tooltip.html(`<strong>${d.key}</strong><br>Value: ${value}`)
+                this.tooltip.html(`<strong>${d.key}`)
                     .style("left", `${event.pageX + 10}px`)
                     .style("top", `${event.pageY - 28}px`);
             })
@@ -352,6 +387,10 @@ export class InternetGDPStreamGraph {
             .attr("y", this.height / 2)
             .attr("text-anchor", "middle")
             .text(message);
+    }
+
+    destroy() {
+        window.removeEventListener('resize', this.handleResize);
     }
 }
 
