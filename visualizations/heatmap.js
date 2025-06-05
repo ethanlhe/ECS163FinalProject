@@ -6,68 +6,43 @@ export async function initHeatmap(container, initialYear = 2000) {
 
     // Country name mapping
     const countryNameMap = {
+        'North Macedonia': 'Macedonia',
+        'Serbia': 'Republic of Serbia',
+        'Viet Nam': 'Vietnam',
+        'Guinea-Bissau': 'Guinea Bissau',
+        'Cote d\'Ivoire': 'Ivory Coast',
         'United States': 'USA',
-        'United Kingdom': 'UK',
-        'Russian Federation': 'Russia',
-        'Korea, Rep.': 'South Korea',
-        'Korea, Dem. People\'s Rep.': 'North Korea',
-        'Iran, Islamic Rep.': 'Iran',
+        'United Kingdom': 'England',
+        'Czechia': 'Czech Republic',
+        'Congo, Dem. Rep.': 'Democratic Republic of the Congo',
+        'Congo, Rep.': 'Republic of the Congo',
         'Egypt, Arab Rep.': 'Egypt',
-        'Venezuela, RB': 'Venezuela',
-        'Yemen, Rep.': 'Yemen',
-        'Syrian Arab Republic': 'Syria',
-        'Lao PDR': 'Laos',
-        'Congo, Rep.': 'Congo',
-        'Congo, Dem. Rep.': 'DR Congo',
-        'Central African Republic': 'Central African Rep.',
-        'Brunei Darussalam': 'Brunei',
-        'Bahamas, The': 'Bahamas',
         'Gambia, The': 'Gambia',
         'Hong Kong SAR, China': 'Hong Kong',
-        'Macao SAR, China': 'Macao',
-        'Taiwan, China': 'Taiwan',
-        'Virgin Islands (U.S.)': 'U.S. Virgin Islands',
-        'Virgin Islands (British)': 'British Virgin Islands',
-        'Turks and Caicos Islands': 'Turks and Caicos Is.',
-        'St. Vincent and the Grenadines': 'Saint Vincent and the Grenadines',
-        'St. Lucia': 'Saint Lucia',
-        'St. Kitts and Nevis': 'Saint Kitts and Nevis',
-        'Sao Tome and Principe': 'São Tomé and Principe',
-        'Marshall Islands': 'Marshall Is.',
-        'Micronesia, Fed. Sts.': 'Micronesia',
+        'Iran, Islamic Rep.': 'Iran',
+        'Korea, Rep.': 'South Korea',
+        'Korea, Dem. People\'s Rep.': 'North Korea',
         'Kyrgyz Republic': 'Kyrgyzstan',
-        'Cabo Verde': 'Cape Verde',
-        'Antigua and Barbuda': 'Antigua and Barb.',
-        'American Samoa': 'American Samoa',
-        'Bosnia and Herzegovina': 'Bosnia and Herz.',
-        'Czech Republic': 'Czechia',
-        'Equatorial Guinea': 'Eq. Guinea',
-        'French Polynesia': 'Fr. Polynesia',
-        'Guinea-Bissau': 'Guinea Bissau',
-        'Solomon Islands': 'Solomon Is.',
-        'South Sudan': 'S. Sudan',
-        'Trinidad and Tobago': 'Trinidad and Tobago',
-        'United Arab Emirates': 'UAE',
-        'Turkiye': 'Turkey',
-        'Czechia': 'Czech Republic',
-        'Dominican Republic': 'Dominican Rep.',
-        'Cote d\'Ivoire': 'Ivory Coast',
-        'Eswatini': 'Swaziland',
+        'Lao PDR': 'Laos',
+        'Macao SAR, China': 'Macau',
+        'Macedonia, FYR': 'Macedonia',
+        'Micronesia, Fed. Sts.': 'Micronesia',
+        'Russian Federation': 'Russia',
+        'Slovak Republic': 'Slovakia',
+        'Syrian Arab Republic': 'Syria',
+        'Tanzania': 'United Republic of Tanzania',
         'Timor-Leste': 'East Timor',
-        'North Macedonia': 'Macedonia',
-        'Palestine': 'Palestinian Territories',
-        'Curaçao': 'Curacao',
-        'Réunion': 'Reunion',
-        'São Tomé and Principe': 'Sao Tome and Principe',
-        'Côte d\'Ivoire': 'Ivory Coast',
-        'Réunion': 'Reunion',
-        'Curaçao': 'Curacao',
-        'São Tomé and Principe': 'Sao Tome and Principe',
-        'Côte d\'Ivoire': 'Ivory Coast',
-        'Réunion': 'Reunion',
-        'Curaçao': 'Curacao',
-        'São Tomé and Principe': 'Sao Tome and Principe'
+        'Turkiye': 'Turkey',
+        'United Arab Emirates, The': 'United Arab Emirates',
+        'Venezuela, RB': 'Venezuela',
+        'Virgin Islands (U.S.)': 'U.S. Virgin Islands',
+        'Yemen, Rep.': 'Yemen'
     };
+
+    // Helper function to get the correct country name
+    function getCountryName(country) {
+        return countryNameMap[country] || country;
+    }
 
     // Create SVG container (responsive)
     const svg = d3.select(container)
@@ -99,7 +74,7 @@ export async function initHeatmap(container, initialYear = 2000) {
             const years = Object.keys(row).filter(key => !isNaN(+key) && +key >= 2000);
             return years.map(year => ({
                 country: row['Country Name'],
-                geoName: countryNameMap[row['Country Name']] || row['Country Name'], // Map to GeoJSON name
+                geoName: getCountryName(row['Country Name']), // Map to GeoJSON name
                 year: +year,
                 value: row[year] === '..' ? null : +row[year]
             }));
@@ -145,23 +120,23 @@ export async function initHeatmap(container, initialYear = 2000) {
                 value: yearMap.get(year)
             })).filter(d => d.value !== undefined);
 
-            // Calculate color scale domain
+            // Calculate color scale domain using a more appropriate range
             const values = yearData.map(d => d.value).sort((a, b) => a - b);
-            const p5 = d3.quantile(values, 0.05);
-            const p95 = d3.quantile(values, 0.95);
-            colorScale.domain([p5, p95]);
+            const p10 = d3.quantile(values, 0.1);  // Use 10th percentile instead of 5th
+            const p90 = d3.quantile(values, 0.9);  // Use 90th percentile instead of 95th
+            colorScale.domain([p10, p90]);
 
             // Update country colors
             countries
                 .attr('fill', d => {
-                    const countryData = yearData.find(c => c.country === d.properties.name);
+                    const countryData = yearData.find(c => c.country === getCountryName(d.properties.name));
                     return countryData ? colorScale(countryData.value) : '#bbb';
                 });
 
             // Update tooltip content
             countries
                 .on('mouseover', function(event, d) {
-                    const countryData = yearData.find(c => c.country === d.properties.name);
+                    const countryData = yearData.find(c => c.country === getCountryName(d.properties.name));
                     const originalName = Object.entries(countryNameMap).find(([_, geoName]) => geoName === d.properties.name)?.[0] || d.properties.name;
                     tooltip.transition()
                         .duration(200)
@@ -180,7 +155,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 });
 
             // Update legend
-            updateLegend(p5, p95);
+            updateLegend(p10, p90);
         }
 
         // Function to update the legend
