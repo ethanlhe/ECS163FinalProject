@@ -1,4 +1,5 @@
 export async function initHeatmap(container, initialYear = 2000) {
+    container.innerHTML = '';
     // Constants
     const width = 1400;
     const height = 500;
@@ -187,7 +188,7 @@ export async function initHeatmap(container, initialYear = 2000) {
             // Add gradient rectangle
             legendSvg.append('rect')
                 .attr('x', 0)
-                .attr('y', 0)
+                .attr('y', -4)
                 .attr('width', legendWidth)
                 .attr('height', legendHeight)
                 .style('fill', 'url(#legend-gradient)');
@@ -195,13 +196,13 @@ export async function initHeatmap(container, initialYear = 2000) {
             // Add labels
             legendSvg.append('text')
                 .attr('x', 0)
-                .attr('y', legendHeight + 18)
+                .attr('y', legendHeight + 12)
                 .attr('text-anchor', 'start')
                 .attr('font-size', '13px')
                 .text(`$${d3.format(',.2f')(min)}`);
             legendSvg.append('text')
                 .attr('x', legendWidth)
-                .attr('y', legendHeight + 18)
+                .attr('y', legendHeight + 12)
                 .attr('text-anchor', 'end')
                 .attr('font-size', '13px')
                 .text(`$${d3.format(',.2f')(max)}`);

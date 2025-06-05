@@ -1,4 +1,5 @@
 export async function initInternetMap(container, initialYear = 2000) {
+    container.innerHTML = '';
     // Constants
     const width = 1400;
     const height = 500;
