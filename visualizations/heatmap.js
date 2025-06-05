@@ -178,7 +178,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 legendMax = internetP90;
                 legendFormat = d => `${d3.format('.1f')(d)}%`;
                 tooltipValue = d => d ? (d3.format('.1f')(d) + '%') : 'No data';
-                noDataFill = '#bbb';
+                noDataFill = 'url(#no-data-pattern)';
                 legendTitle = `Internet Access (% of Population, ${currentYear})`;
             }
 
@@ -244,14 +244,14 @@ export async function initHeatmap(container, initialYear = 2000) {
                 .style('fill', 'url(#legend-gradient)');
             // Always add "No data" swatch
             legendSvg.append('rect')
-                .attr('x', legendWidth + 20)
+                .attr('x', legendWidth + 40)
                 .attr('y', -4)
                 .attr('width', 24)
                 .attr('height', legendHeight)
-                .style('fill', currentMode === 'gdp' ? 'url(#no-data-pattern)' : '#bbb');
+                .style('fill', 'url(#no-data-pattern)');
             legendSvg.append('text')
-                .attr('x', legendWidth + 48)
-                .attr('y', legendHeight + 6)
+                .attr('x', legendWidth + 28)
+                .attr('y', legendHeight + 12)
                 .attr('text-anchor', 'start')
                 .attr('font-size', '13px')
                 .text('No data');
