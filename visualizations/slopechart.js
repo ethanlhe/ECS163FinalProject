@@ -165,7 +165,7 @@ export function createSlopeChart(container, data, options) {
         .on('mouseover', function(event, d) {
             const containerRect = container.getBoundingClientRect();
             const svgRect = svg.node().getBoundingClientRect();
-            let left = event.clientX - svgRect.left + margin.left + 10;
+            let left = event.clientX - svgRect.left + margin.left + 500;
             let top = event.clientY - svgRect.top - 30;
             // Clamp right edge
             const tooltipWidth = 160;

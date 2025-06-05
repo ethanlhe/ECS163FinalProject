@@ -65,7 +65,7 @@ export function createBarChart(container, data, options) {
             d3.select(this).attr('opacity', 1);
             const containerRect = container.getBoundingClientRect();
             const svgRect = svg.node().getBoundingClientRect();
-            let left = event.clientX - svgRect.left + margin.left + 10;
+            let left = event.clientX - svgRect.left + margin.left + 500;
             let top = event.clientY - svgRect.top - 30;
             // Clamp right edge
             const tooltipWidth = 160;
