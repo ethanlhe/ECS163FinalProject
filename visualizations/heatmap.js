@@ -1,3 +1,5 @@
+import { InternetGDPStreamGraph } from './streamgraph.js';
+
 export async function initHeatmap(container, initialYear = 2000) {
     container.innerHTML = '';
     // Add toggle button
@@ -6,11 +8,70 @@ export async function initHeatmap(container, initialYear = 2000) {
     toggleBtn.textContent = 'Switch to Internet Usage';
     document.querySelector('.map-toolbar').appendChild(toggleBtn);
 
+    // Add modal container
+    const modalContainer = document.createElement('div');
+    modalContainer.id = 'country-modal';
+    modalContainer.className = 'modal';
+    modalContainer.innerHTML = `
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2 id="modal-title"></h2>
+            <div id="modal-vis-container"></div>
+        </div>
+    `;
+    document.body.appendChild(modalContainer);
+
+    // Add modal styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 1200px;
+            border-radius: 8px;
+            position: relative;
+        }
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-modal:hover {
+            color: black;
+        }
+        .modal-toolbar {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+        #modal-vis-container {
+            min-height: 400px;
+            margin-top: 20px;
+        }
+    `;
+    document.head.appendChild(style);
+
     // Constants
     const width = 1400;
     const height = 500;
     let currentYear = initialYear;
     let currentMode = 'gdp'; // 'gdp' or 'internet'
+    let selectedCountry = null;
 
     // Country name mapping
     const countryNameMap = {
@@ -182,15 +243,16 @@ export async function initHeatmap(container, initialYear = 2000) {
                 legendTitle = `Internet Access (% of Population, ${currentYear})`;
             }
 
-            // Update country colors
+            // Update country colors and add event handlers
             countries
                 .attr('fill', d => {
                     const countryData = yearData.find(c => c.country === getCountryName(d.properties.name));
                     return countryData ? colorScale(countryData.value) : noDataFill;
-                });
-
-            // Update tooltip content
-            countries
+                })
+                .on('click', function(event, d) {
+                    const countryName = d.properties.name;
+                    showCountryModal(countryName);
+                })
                 .on('mouseover', function(event, d) {
                     const countryData = yearData.find(c => c.country === getCountryName(d.properties.name));
                     const originalName = Object.entries(countryNameMap).find(([_, geoName]) => geoName === d.properties.name)?.[0] || d.properties.name;
@@ -199,7 +261,8 @@ export async function initHeatmap(container, initialYear = 2000) {
                         .style('opacity', 0.95);
                     tooltip.html(`
                         <strong>${originalName}</strong><br/>
-                        ${currentMode === 'gdp' ? 'GDP' : 'Internet Access'} (${year}): ${tooltipValue(countryData ? countryData.value : null)}
+                        ${currentMode === 'gdp' ? 'GDP' : 'Internet Access'} (${currentYear}): ${tooltipValue(countryData ? countryData.value : null)}<br/>
+                        <em>Click for detailed analysis</em>
                     `)
                         .style('left', (event.pageX + 10) + 'px')
                         .style('top', (event.pageY - 28) + 'px');
@@ -286,6 +349,45 @@ export async function initHeatmap(container, initialYear = 2000) {
             toggleBtn.textContent = currentMode === 'gdp' ? 'Switch to Internet Usage' : 'Switch to GDP';
             update(currentYear);
         });
+
+        // Function to show modal with country data
+        async function showCountryModal(country) {
+            const modal = document.getElementById('country-modal');
+            const modalTitle = document.getElementById('modal-title');
+            document.getElementById('modal-vis-container').innerHTML = ""; // Clear previous content
+
+            // Re-select after clearing
+            const visContainer = document.getElementById('modal-vis-container');
+            modalTitle.textContent = `${country} - ${currentMode === 'gdp' ? 'GDP' : 'Internet Usage'} Analysis`;
+            modal.style.display = 'block';
+
+            // Pass the container and country to the graph
+            const streamgraph = new InternetGDPStreamGraph(visContainer, country);
+            await streamgraph.init();
+
+            // Listen for global year changes and update the streamgraph
+            const yearListener = (event) => {
+                if (event.detail && event.detail.year !== undefined) {
+                    streamgraph.setYear(event.detail.year);
+                }
+            };
+            window.addEventListener('yearChange', yearListener);
+
+            // Close modal when clicking the X
+            document.querySelector('.close-modal').onclick = () => {
+                modal.style.display = 'none';
+                streamgraph.destroy();
+                window.removeEventListener('yearChange', yearListener);
+            };
+            // Close modal when clicking outside
+            window.onclick = (event) => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                    streamgraph.destroy();
+                    window.removeEventListener('yearChange', yearListener);
+                }
+            };
+        }
 
         // Return visualization object
         return {

@@ -2,6 +2,19 @@ import { initHeatmap } from './visualizations/heatmap.js';
 
 let currentVisualization = null;
 let currentYear = 2000;
+const yearListeners = [];
+
+export function getCurrentYear() {
+    return currentYear;
+}
+
+export function subscribeToYearChange(listener) {
+    yearListeners.push(listener);
+}
+
+function notifyYearChange() {
+    yearListeners.forEach(listener => listener(currentYear));
+}
 
 // Initialize the default visualization (GDP/Internet toggle is now inside heatmap)
 document.addEventListener('DOMContentLoaded', () => {
@@ -25,6 +38,8 @@ function setupYearSelector() {
         currentYear = parseInt(e.target.value);
         yearValue.textContent = currentYear;
         updateVisualization();
+        // Notify listeners via custom event
+        window.dispatchEvent(new CustomEvent('yearChange', { detail: { year: currentYear } }));
     });
 }
 
