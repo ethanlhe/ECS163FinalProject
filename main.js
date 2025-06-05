@@ -17,13 +17,10 @@ function setupYearSelector() {
         <input type="range" id="year" min="2000" max="2020" value="${currentYear}" step="1">
         <span id="year-value">${currentYear}</span>
     `;
-    
-    // Place after dashboard-header (since tabs are gone)
-    document.querySelector('.dashboard-header').after(yearSelector);
-    
+    // Place inside the map-toolbar
+    document.querySelector('.map-toolbar').appendChild(yearSelector);
     const yearInput = document.getElementById('year');
     const yearValue = document.getElementById('year-value');
-    
     yearInput.addEventListener('input', (e) => {
         currentYear = parseInt(e.target.value);
         yearValue.textContent = currentYear;

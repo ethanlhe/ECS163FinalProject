@@ -4,7 +4,7 @@ export async function initHeatmap(container, initialYear = 2000) {
     const toggleBtn = document.createElement('button');
     toggleBtn.id = 'heatmapToggle';
     toggleBtn.textContent = 'Switch to Internet Usage';
-    container.appendChild(toggleBtn);
+    document.querySelector('.map-toolbar').appendChild(toggleBtn);
 
     // Constants
     const width = 1400;
