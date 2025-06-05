@@ -1,21 +1,76 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
-import { loadAndCleanData } from "./data/dataLoader.js";
+import { loadAndCleanData } from "../data/dataLoader.js";
 
 export class InternetUsageBarChart {
     constructor() {
-        this.margin = { top: 60, right: 60, bottom: 80, left: 80 };
-        this.width = 900 - this.margin.left - this.margin.right;
-        this.height = 500 - this.margin.top - this.margin.bottom;
-        
+       this.margin = { top: 60, right: 60, bottom: 80, left: 80 };
+       this.width = 900 - this.margin.left - this.margin.right;
+       this.height = 500 - this.margin.top - this.margin.bottom;
+
         this.yearColor = d3.scaleOrdinal()
             .domain(["2000", "2023"])
             .range(["#1f77b4", "#ff7f0e"]);
+
+                
+        this.currentData = null;
+        this.svg = null;
+        this.chartGroup = null;   
+        this.handleResize = this.handleResize.bind(this);
+        this.debouncedResize = this.debounce(this.handleResize, 100);
+    }
+
+    debounce(func, wait) {
+        let timeout;
+        return function() {
+            const context = this, args = arguments;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                func.apply(context, args);
+            }, wait);
+        };
     }
 
     init() {
         this.createSVG();
         this.createTooltip();
         this.loadData();
+
+        window.addEventListener('resize', this.debouncedResize);
+    }
+
+    calculateDimensions() {
+        // Get the container dimensions
+        const container = document.getElementById('chart-container');
+        if (!container) return;
+        
+        const containerWidth = container.clientWidth;
+        const containerHeight = Math.min(containerWidth * 0.6, 600); // Maintain aspect ratio
+        
+        // Calculate new dimensions with responsive margins
+        const isMobile = containerWidth < 768;
+        this.margin = isMobile 
+            ? { top: 40, right: 20, bottom: 60, left: 40 }
+            : { top: 60, right: 60, bottom: 80, left: 80 };
+            
+        this.width = containerWidth - this.margin.left - this.margin.right;
+        this.height = containerHeight - this.margin.top - this.margin.bottom;
+    }
+    
+    handleResize() {
+        this.calculateDimensions();
+        
+        // Update SVG dimensions
+        d3.select("#chart-container svg")
+            .attr("width", this.width + this.margin.left + this.margin.right)
+            .attr("height", this.height + this.margin.top + this.margin.bottom);
+            
+        // Update chart group transform
+        this.chartGroup.attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+            
+        // Redraw if we have data
+        if (this.currentData) {
+            this.drawChart(this.currentData);
+        }
     }
 
     createSVG() {
@@ -313,6 +368,10 @@ export class InternetUsageBarChart {
         d3.select("#chart").append("div")
             .attr("class", "error-message")
             .text(message);
+    }
+
+    destroy() {
+        window.removeEventListener('resize', this.debouncedResize);
     }
 }
 
