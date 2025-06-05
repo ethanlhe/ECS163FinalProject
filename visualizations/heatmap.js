@@ -232,7 +232,10 @@ export async function initHeatmap(container, initialYear = 2000) {
 
         // Custom interpolator: green (low) to blue (high)
         const customInterpolator = d3.interpolateRgbBasis(["#80B192", "#36453B", "#5525c4"]);
-        let colorScaleGdp = d3.scaleSequential(customInterpolator).domain([gdpP10, gdpP90]);
+        // Compute log10 for GDP percentiles
+        let logGdpP10 = Math.log10(gdpP10);
+        let logGdpP90 = Math.log10(gdpP90);
+        let colorScaleGdp = d3.scaleSequential(customInterpolator).domain([logGdpP10, logGdpP90]);
         let colorScaleInternet = d3.scaleSequential(customInterpolator).domain([internetP10, internetP90]);
 
         // Function to update the visualization
@@ -246,8 +249,10 @@ export async function initHeatmap(container, initialYear = 2000) {
                 })).filter(d => d.value !== undefined);
                 colorScale = colorScaleGdp;
                 valueLabel = d => d ? ('$' + d3.format(',.2f')(d)) : 'No data';
-                legendMin = gdpP10;
-                legendMax = gdpP90;
+                // Compute min/max for the current year
+                const values = yearData.map(d => d.value).filter(v => v != null && v > 0); // only positive for log
+                legendMin = d3.min(values);
+                legendMax = d3.max(values);
                 legendFormat = d => `$${d3.format(',.2f')(d)}`;
                 tooltipValue = d => d ? ('$' + d3.format(',.2f')(d)) : 'No data';
                 noDataFill = 'url(#no-data-pattern)';
@@ -259,8 +264,10 @@ export async function initHeatmap(container, initialYear = 2000) {
                 })).filter(d => d.value !== undefined);
                 colorScale = colorScaleInternet;
                 valueLabel = d => d ? (d3.format('.1f')(d) + '%') : 'No data';
-                legendMin = internetP10;
-                legendMax = internetP90;
+                // Compute min/max for the current year
+                const values = yearData.map(d => d.value).filter(v => v != null);
+                legendMin = d3.min(values);
+                legendMax = d3.max(values);
                 legendFormat = d => `${d3.format('.1f')(d)}%`;
                 tooltipValue = d => d ? (d3.format('.1f')(d) + '%') : 'No data';
                 noDataFill = 'url(#no-data-pattern)';
@@ -271,7 +278,11 @@ export async function initHeatmap(container, initialYear = 2000) {
             countries
                 .attr('fill', d => {
                     const countryData = yearData.find(c => c.country === getCountryName(d.properties.name));
-                    return countryData ? colorScale(countryData.value) : noDataFill;
+                    if (currentMode === 'gdp') {
+                        return (countryData && countryData.value > 0) ? colorScaleGdp(Math.log10(countryData.value)) : noDataFill;
+                    } else {
+                        return countryData ? colorScaleInternet(countryData.value) : noDataFill;
+                    }
                 });
 
             // Update tooltip content
@@ -337,51 +348,103 @@ export async function initHeatmap(container, initialYear = 2000) {
             const defs = legendSvg.append('defs');
             const linearGradient = defs.append('linearGradient')
                 .attr('id', 'legend-gradient');
-            linearGradient.selectAll('stop')
-                .data(d3.range(0, 1.01, 0.01))
-                .enter().append('stop')
-                .attr('offset', d => `${d * 100}%`)
-                .attr('stop-color', d => customInterpolator(d));
-            // Add gradient rectangle
-            legendSvg.append('rect')
-                .attr('x', 0)
-                .attr('y', -4)
-                .attr('width', legendWidth)
-                .attr('height', legendHeight)
-                .style('fill', 'url(#legend-gradient)');
-            // Always add "No data" swatch
-            legendSvg.append('rect')
-                .attr('x', legendWidth + 40)
-                .attr('y', -4)
-                .attr('width', 24)
-                .attr('height', legendHeight)
-                .style('fill', 'url(#no-data-pattern)');
-            legendSvg.append('text')
-                .attr('x', legendWidth + 28)
-                .attr('y', legendHeight + 12)
-                .attr('text-anchor', 'start')
-                .attr('font-size', '13px')
-                .text('No data');
-            // Add labels
-            legendSvg.append('text')
-                .attr('x', 0)
-                .attr('y', legendHeight + 12)
-                .attr('text-anchor', 'start')
-                .attr('font-size', '13px')
-                .text(format(min));
-            legendSvg.append('text')
-                .attr('x', legendWidth)
-                .attr('y', legendHeight + 12)
-                .attr('text-anchor', 'end')
-                .attr('font-size', '13px')
-                .text(format(max));
-            legendSvg.append('text')
-                .attr('x', legendWidth / 2)
-                .attr('y', legendHeight + 28)
-                .attr('text-anchor', 'middle')
-                .attr('font-size', '14px')
-                .attr('font-weight', 'bold')
-                .text(legendTitle);
+            if (currentMode === 'gdp') {
+                // Log scale for GDP
+                let logMin = Math.log10(min);
+                let logMax = Math.log10(max);
+                linearGradient.selectAll('stop')
+                    .data(d3.range(0, 1.01, 0.01))
+                    .enter().append('stop')
+                    .attr('offset', d => `${d * 100}%`)
+                    .attr('stop-color', d => colorScaleGdp(logMin + d * (logMax - logMin)));
+                // Add gradient rectangle
+                legendSvg.append('rect')
+                    .attr('x', 0)
+                    .attr('y', -4)
+                    .attr('width', legendWidth)
+                    .attr('height', legendHeight)
+                    .style('fill', 'url(#legend-gradient)');
+                // Always add "No data" swatch
+                legendSvg.append('rect')
+                    .attr('x', legendWidth + 40)
+                    .attr('y', -4)
+                    .attr('width', 24)
+                    .attr('height', legendHeight)
+                    .style('fill', 'url(#no-data-pattern)');
+                legendSvg.append('text')
+                    .attr('x', legendWidth + 28)
+                    .attr('y', legendHeight + 12)
+                    .attr('text-anchor', 'start')
+                    .attr('font-size', '13px')
+                    .text('No data');
+                // Add labels (exponentiate for log scale)
+                legendSvg.append('text')
+                    .attr('x', 0)
+                    .attr('y', legendHeight + 12)
+                    .attr('text-anchor', 'start')
+                    .attr('font-size', '13px')
+                    .text(format(min));
+                legendSvg.append('text')
+                    .attr('x', legendWidth)
+                    .attr('y', legendHeight + 12)
+                    .attr('text-anchor', 'end')
+                    .attr('font-size', '13px')
+                    .text(format(max));
+                legendSvg.append('text')
+                    .attr('x', legendWidth / 2)
+                    .attr('y', legendHeight + 28)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '14px')
+                    .attr('font-weight', 'bold')
+                    .text(legendTitle);
+            } else {
+                // Internet usage (linear)
+                linearGradient.selectAll('stop')
+                    .data(d3.range(0, 1.01, 0.01))
+                    .enter().append('stop')
+                    .attr('offset', d => `${d * 100}%`)
+                    .attr('stop-color', d => colorScaleInternet(min + d * (max - min)));
+                // Add gradient rectangle
+                legendSvg.append('rect')
+                    .attr('x', 0)
+                    .attr('y', -4)
+                    .attr('width', legendWidth)
+                    .attr('height', legendHeight)
+                    .style('fill', 'url(#legend-gradient)');
+                // Always add "No data" swatch
+                legendSvg.append('rect')
+                    .attr('x', legendWidth + 40)
+                    .attr('y', -4)
+                    .attr('width', 24)
+                    .attr('height', legendHeight)
+                    .style('fill', 'url(#no-data-pattern)');
+                legendSvg.append('text')
+                    .attr('x', legendWidth + 28)
+                    .attr('y', legendHeight + 12)
+                    .attr('text-anchor', 'start')
+                    .attr('font-size', '13px')
+                    .text('No data');
+                // Add labels
+                legendSvg.append('text')
+                    .attr('x', 0)
+                    .attr('y', legendHeight + 12)
+                    .attr('text-anchor', 'start')
+                    .attr('font-size', '13px')
+                    .text(format(min));
+                legendSvg.append('text')
+                    .attr('x', legendWidth)
+                    .attr('y', legendHeight + 12)
+                    .attr('text-anchor', 'end')
+                    .attr('font-size', '13px')
+                    .text(format(max));
+                legendSvg.append('text')
+                    .attr('x', legendWidth / 2)
+                    .attr('y', legendHeight + 28)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '14px')
+                    .attr('font-weight', 'bold')
+                    .text(legendTitle);
+            }
         }
 
         // Function to open modal (move here so it can access the data maps)
