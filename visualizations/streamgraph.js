@@ -2,8 +2,7 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 import { loadAndCleanData } from '../data/dataLoader.js';
 
 export class InternetGDPStreamGraph {
-    constructor(container) {
-        this.container = container;
+    constructor() {
         this.margin = { top: 100, right: 60, bottom: 200, left: 60 };
         this.width = 1000;
         this.height = 500;
@@ -150,7 +149,6 @@ export class InternetGDPStreamGraph {
     }
 
     init() {
-        this.calculateDimensions();
         this.createSVG();
         this.createTooltip();
         this.setupToggleButton();
@@ -160,9 +158,12 @@ export class InternetGDPStreamGraph {
     }
 
     calculateDimensions() {
-        if (!this.container) return;
-        const containerWidth = this.container.clientWidth || 800;
+        // Get the container dimensions
+        const container = document.getElementById('chart');
+        const containerWidth = container.clientWidth;
         const containerHeight = Math.min(containerWidth * 0.6, 600); // Maintain aspect ratio
+        
+        // Calculate new dimensions
         this.width = containerWidth - this.margin.left - this.margin.right;
         this.height = containerHeight - this.margin.top - this.margin.bottom;
     }
@@ -171,7 +172,7 @@ export class InternetGDPStreamGraph {
         this.calculateDimensions();
         
         // Update SVG dimensions
-        d3.select(this.container).select("svg")
+        d3.select("#chart svg")
             .attr("width", this.width + this.margin.left + this.margin.right)
             .attr("height", this.height + this.margin.top + this.margin.bottom);
             
@@ -182,8 +183,7 @@ export class InternetGDPStreamGraph {
     }
 
     createSVG() {
-        d3.select(this.container).selectAll("svg").remove();
-        this.svg = d3.select(this.container)
+        this.svg = d3.select("#chart")
             .append("svg")
             .attr("width", this.width + this.margin.left + this.margin.right)
             .attr("height", this.height + this.margin.top + this.margin.bottom)
@@ -192,20 +192,19 @@ export class InternetGDPStreamGraph {
     }
 
     createTooltip() {
-        d3.select(this.container).selectAll(".tooltip").remove();
-        this.tooltip = d3.select(this.container).append("div")
+        this.tooltip = d3.select("body").append("div")
             .attr("class", "tooltip")
             .style("opacity", 0);
     }
 
     setupToggleButton() {
-        d3.select(this.container).select("#ratioToggle")
+        d3.select("#ratioToggle")
             .on("click", () => {
                 this.currentRatioType = this.currentRatioType === 'internetOverGDP' 
                     ? 'gdpOverInternet' 
                     : 'internetOverGDP';
                 
-                d3.select(this.container).select("#ratioToggle")
+                d3.select("#ratioToggle")
                     .text(this.currentRatioType === 'internetOverGDP' 
                         ? "Switch to GDP / Internet" 
                         : "Switch to Internet / GDP");
@@ -272,9 +271,7 @@ export class InternetGDPStreamGraph {
             });
         });
 
-        // Filter data to show only the last 5 years for better visualization
-        const recentYears = years.slice(-5);
-        return recentYears.map(year => {
+        return years.map(year => {
             const row = { year };
             continents.forEach(c => {
                 row[c] = dataByContinent[c].Ratio[year];
@@ -369,7 +366,7 @@ export class InternetGDPStreamGraph {
     }
 
     createLegend() {
-        const legend = d3.select(this.container).select("#legend").html("");
+        const legend = d3.select("#legend").html("");
         const continents = ["Asia", "Europe", "North America", "South America", "Africa", "Oceania"];
 
         continents.forEach(continent => {
@@ -394,12 +391,11 @@ export class InternetGDPStreamGraph {
 
     destroy() {
         window.removeEventListener('resize', this.handleResize);
-        d3.select(this.container).selectAll("*").remove();
     }
 }
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    const graph = new InternetGDPStreamGraph(document.getElementById('chart'));
+    const graph = new InternetGDPStreamGraph();
     graph.init();
 });
