@@ -55,6 +55,16 @@ export function createSlopeChart(container, data, options) {
         .call(g => g.select('.domain').attr('stroke','#bbb'))
         .call(g => g.selectAll('text').attr('font-size','13px').attr('fill','#444'));
 
+    // Y label
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', 18)
+        .attr('x', -height/2)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '14px')
+        .attr('fill', '#444')
+        .text(currentMode === 'gdp' ? 'GDP (US Dollars)' : 'Internet Usage (%)');
+
     // X axis
     svg.append('g')
         .attr('transform', `translate(0,${height - margin.bottom})`)
@@ -64,6 +74,15 @@ export function createSlopeChart(container, data, options) {
         )
         .call(g => g.select('.domain').attr('stroke','#bbb'))
         .call(g => g.selectAll('text').attr('font-size','13px').attr('fill','#444'));
+
+    // X label
+    svg.append('text')
+        .attr('x', width/2)
+        .attr('y', height - 10)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '14px')
+        .attr('fill', '#444')
+        .text('Year');
 
     // Grid lines
     svg.append('g')

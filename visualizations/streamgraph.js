@@ -1,7 +1,7 @@
 export function createStreamGraph(container, data, options) {
     const {
-        width = 600,
-        height = 440,
+        width = 700,
+        height = 500,
         margin = {top: 30, right: 120, bottom: 50, left: 80},
         currentMode = 'gdp',
         formatGDP = (val) => val ? '$' + d3.format(',.2f')(val) : 'No data',
@@ -101,6 +101,25 @@ export function createStreamGraph(container, data, options) {
         )
         .call(g => g.select('.domain').attr('stroke','#bbb'))
         .call(g => g.selectAll('text').attr('font-size','13px').attr('fill','#444'));
+
+    // X label
+    svg.append('text')
+        .attr('x', width/2)
+        .attr('y', height - 10)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '14px')
+        .attr('fill', '#444')
+        .text('Year');
+
+    // Y label
+    svg.append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y', 18)
+        .attr('x', -height/2)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', '14px')
+        .attr('fill', '#444')
+        .text(currentMode === 'gdp' ? 'GDP (US Dollars)' : 'Internet Usage (%)');
 
     // Draw legend (vertical, right side)
     const legend = svg.append('g')

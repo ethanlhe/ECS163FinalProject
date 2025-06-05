@@ -268,17 +268,29 @@ export async function initHeatmap(container, initialYear = 2000) {
                 .on('mouseover', function(event, d) {
                     const countryData = yearData.find(c => c.country === getCountryName(d.properties.name));
                     const originalName = Object.entries(countryNameMap).find(([_, geoName]) => geoName === d.properties.name)?.[0] || d.properties.name;
+                    
+                    // Highlight hovered country
+                    d3.select(this)
+                        .attr('stroke', '#5525c4')
+                        .attr('stroke-width', 2);
+                    
                     tooltip.transition()
                         .duration(200)
                         .style('opacity', 0.95);
                     tooltip.html(`
                         <strong>${originalName}</strong><br/>
-                        ${currentMode === 'gdp' ? 'GDP' : 'Internet Access'} (${year}): ${tooltipValue(countryData ? countryData.value : null)}
+                        ${currentMode === 'gdp' ? 'GDP' : 'Internet Access'} (${year}): ${tooltipValue(countryData ? countryData.value : null)}<br/>
+                        <span style="color: #2171b5; font-size: 0.9em; cursor: pointer;">Click to show more details</span>
                     `)
                         .style('left', (event.pageX + 10) + 'px')
                         .style('top', (event.pageY - 28) + 'px');
                 })
                 .on('mouseout', function() {
+                    // Remove highlight
+                    d3.select(this)
+                        .attr('stroke', '#222')
+                        .attr('stroke-width', 0.7);
+                        
                     tooltip.transition()
                         .duration(500)
                         .style('opacity', 0);
@@ -416,13 +428,13 @@ export async function initHeatmap(container, initialYear = 2000) {
                     .form_control_container { display: flex; flex-direction: column; align-items: center; }
                     .form_control_container__time { font-size: 15px; color: #635a5a; margin-bottom: 2px; }
                     .form_control_container__time__input { color: #8a8383; width: 60px; height: 30px; font-size: 18px; border: none; text-align: center; background: #f7f7f7; border-radius: 6px; }
-                    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: all; width: 20px; height: 20px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 0 1px #C6C6C6; cursor: pointer; }
-                    input[type=range]::-moz-range-thumb { pointer-events: all; width: 20px; height: 20px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 0 1px #C6C6C6; cursor: pointer; }
-                    input[type=range]::-webkit-slider-thumb:hover { background: #f7f7f7; }
-                    input[type=range]::-webkit-slider-thumb:active { box-shadow: inset 0 0 3px #387bbe, 0 0 9px #387bbe; }
+                    .modal-range-slider::-webkit-slider-thumb { -webkit-appearance: none; pointer-events: all; width: 20px; height: 20px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 0 1px #C6C6C6; cursor: pointer; }
+                    .modal-range-slider::-moz-range-thumb { pointer-events: all; width: 20px; height: 20px; background-color: #fff; border-radius: 50%; box-shadow: 0 0 0 1px #C6C6C6; cursor: pointer; }
+                    .modal-range-slider::-webkit-slider-thumb:hover { background: #f7f7f7; }
+                    .modal-range-slider::-webkit-slider-thumb:active { box-shadow: inset 0 0 3px #387bbe, 0 0 9px #387bbe; }
                     input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { opacity: 1; }
-                    input[type=range] { -webkit-appearance: none; appearance: none; height: 2px; width: 100%; position: absolute; background-color: #C6C6C6; pointer-events: none; }
-                    #fromSlider { height: 0; z-index: 1; }
+                    .modal-range-slider { -webkit-appearance: none; appearance: none; height: 2px; width: 100%; position: absolute; background-color: #C6C6C6; pointer-events: none; }
+                    #fromSlider.modal-range-slider { height: 0; z-index: 1; }
                     `;
                     document.head.appendChild(style);
                 }
@@ -434,8 +446,8 @@ export async function initHeatmap(container, initialYear = 2000) {
                             <input class="form_control_container__time__input" type="number" id="fromInput" value="${sliderState.start}" min="${minYear}" max="${maxYear - 1}">
                         </div>
                         <div class="sliders_control">
-                            <input id="fromSlider" type="range" min="${minYear}" max="${maxYear}" value="${sliderState.start}" step="1">
-                            <input id="toSlider" type="range" min="${minYear}" max="${maxYear}" value="${sliderState.end}" step="1">
+                            <input id="fromSlider" class="modal-range-slider" type="range" min="${minYear}" max="${maxYear}" value="${sliderState.start}" step="1">
+                            <input id="toSlider" class="modal-range-slider" type="range" min="${minYear}" max="${maxYear}" value="${sliderState.end}" step="1">
                         </div>
                         <div class="form_control_container">
                             <div class="form_control_container__time">End</div>
