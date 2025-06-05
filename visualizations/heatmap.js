@@ -1,5 +1,7 @@
 import { createLineChart } from './linechart.js';
 import { createSlopeChart } from './slopechart.js';
+import { createStreamGraph } from './streamgraph.js';
+import { createBarChart } from './barchart.js';
 
 export async function initHeatmap(container, initialYear = 2000) {
     container.innerHTML = '';
@@ -655,6 +657,8 @@ export async function initHeatmap(container, initialYear = 2000) {
             function renderChartContainers() {
                 modalContent.querySelector('#lineTabPlaceholder').innerHTML = `<div id='modalLineChart' style='width:100%;height:340px;'></div>`;
                 modalContent.querySelector('#slopeTabPlaceholder').innerHTML = `<div id='modalSlopeChart' style='width:100%;height:340px;'></div>`;
+                modalContent.querySelector('#streamTabPlaceholder').innerHTML = `<div id='modalStreamChart' style='width:100%;height:340px;'></div>`;
+                modalContent.querySelector('#barTabPlaceholder').innerHTML = `<div id='modalBarChart' style='width:100%;height:340px;'></div>`;
             }
             function updateCharts() {
                 const checked = Array.from(modalContent.querySelectorAll('input[name=country]:checked')).map(cb => cb.value);
@@ -731,16 +735,50 @@ export async function initHeatmap(container, initialYear = 2000) {
                     formatGDP,
                     sliderState
                 });
+
+                // --- STREAM GRAPH ---
+                const streamChartDiv = modalContent.querySelector('#modalStreamChart');
+                if (!streamChartDiv) return;
+                streamChartDiv.innerHTML = '';
+                if (checked.length === 0) {
+                    streamChartDiv.innerHTML = `<div style='text-align:center;padding-top:120px;color:#888;'>Select at least one country</div>`;
+                    return;
+                }
+
+                // Create stream graph
+                createStreamGraph(streamChartDiv, countryData, {
+                    currentMode,
+                    formatGDP,
+                    sliderState
+                });
+
+                // --- BAR CHART ---
+                const barChartDiv = modalContent.querySelector('#modalBarChart');
+                if (!barChartDiv) return;
+                barChartDiv.innerHTML = '';
+                if (checked.length === 0) {
+                    barChartDiv.innerHTML = `<div style='text-align:center;padding-top:120px;color:#888;'>Select at least one country</div>`;
+                    return;
+                }
+
+                // Create bar chart
+                createBarChart(barChartDiv, countryData, {
+                    currentMode,
+                    formatGDP,
+                    sliderState
+                });
             }
 
             // --- Main content HTML (tabs) ---
             const mainContentHtml = `
-                <div style='flex:1;min-width:600px;max-width:600px;padding-left:32px;'>
+                <div style='flex:1;min-width:1000px;max-width:1000px;padding-left:32px;'>
                     <div id='metricToggleContainer'></div>
                     <div id='modalTimeSliderContainer'></div>
                     <div id="modalTabs" style="display:flex;gap:16px;margin-bottom:18px;">
                         <button class="modal-tab active" data-tab="line" style="padding:8px 20px;border:none;border-bottom:2px solid #2171b5;background:none;font-size:1.1em;cursor:pointer;outline:none;">Line</button>
                         <button class="modal-tab" data-tab="slope" style="padding:8px 20px;border:none;border-bottom:2px solid transparent;background:none;font-size:1.1em;cursor:pointer;outline:none;">Slope</button>
+                        <button class="modal-tab" data-tab="stream" style="padding:8px 20px;border:none;border-bottom:2px solid transparent;background:none;font-size:1.1em;cursor:pointer;outline:none;">Stream</button>
+                        <button class="modal-tab" data-tab="bar" style="padding:8px 20px;border:none;border-bottom:2px solid transparent;background:none;font-size:1.1em;cursor:pointer;outline:none;">Bar</button>
                     </div>
                     <div id="modalTabContent">
                         <div data-tab-content="line">
@@ -749,6 +787,12 @@ export async function initHeatmap(container, initialYear = 2000) {
                         <div data-tab-content="slope" style="display:none;">
                             <div id='slopeTabPlaceholder' style='text-align:center;font-size:1.2em;'></div>
                         </div>
+                        <div data-tab-content="stream" style="display:none;">
+                            <div id='streamTabPlaceholder' style='text-align:center;font-size:1.2em;'></div>
+                        </div>
+                        <div data-tab-content="bar" style="display:none;">
+                            <div id='barTabPlaceholder' style='text-align:center;font-size:1.2em;'></div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -756,7 +800,7 @@ export async function initHeatmap(container, initialYear = 2000) {
             // --- Layout: sidebar + main content ---
             modalContent.innerHTML = `
                 <div style='display:flex;align-items:flex-start;'>
-                    <div id='modalSidebarContainer' style='min-width:400px;'></div>
+                    <div id='modalSidebarContainer' style='min-width:0px;'></div>
                     ${mainContentHtml}
                 </div>
             `;
@@ -796,6 +840,8 @@ export async function initHeatmap(container, initialYear = 2000) {
                 // Remove placeholder text and ensure chart containers exist
                 modalContent.querySelector('#lineTabPlaceholder').innerHTML = `<div id='modalLineChart' style='width:100%;height:340px;'></div>`;
                 modalContent.querySelector('#slopeTabPlaceholder').innerHTML = `<div id='modalSlopeChart' style='width:100%;height:340px;'></div>`;
+                modalContent.querySelector('#streamTabPlaceholder').innerHTML = `<div id='modalStreamChart' style='width:100%;height:340px;'></div>`;
+                modalContent.querySelector('#barTabPlaceholder').innerHTML = `<div id='modalBarChart' style='width:100%;height:340px;'></div>`;
                 // Persist selection globally
                 modalSelectedCountries = checked;
                 modalShowOnlyRealCountries = sidebarState.showOnlyReal;
