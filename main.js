@@ -1,30 +1,13 @@
 import { initHeatmap } from './visualizations/heatmap.js';
-import { initInternetMap } from './visualizations/internet.js';
 
 let currentVisualization = null;
 let currentYear = 2000;
 
-// Initialize the default visualization (GDP)
+// Initialize the default visualization (GDP/Internet toggle is now inside heatmap)
 document.addEventListener('DOMContentLoaded', () => {
-    loadVisualization('gdp');
-    setupTabListeners();
+    loadVisualization();
     setupYearSelector();
 });
-
-function setupTabListeners() {
-    const tabButtons = document.querySelectorAll('.tab-btn');
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            // Update active state
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            button.classList.add('active');
-            
-            // Load corresponding visualization
-            const tabType = button.getAttribute('data-tab');
-            loadVisualization(tabType);
-        });
-    });
-}
 
 function setupYearSelector() {
     const yearSelector = document.createElement('div');
@@ -35,7 +18,8 @@ function setupYearSelector() {
         <span id="year-value">${currentYear}</span>
     `;
     
-    document.querySelector('.dashboard-tabs').after(yearSelector);
+    // Place after dashboard-header (since tabs are gone)
+    document.querySelector('.dashboard-header').after(yearSelector);
     
     const yearInput = document.getElementById('year');
     const yearValue = document.getElementById('year-value');
@@ -63,21 +47,11 @@ function showError(container, message) {
     `;
 }
 
-async function loadVisualization(type) {
+async function loadVisualization() {
     const container = document.getElementById('vis-container');
     showLoading(container);
-
     try {
-        switch(type) {
-            case 'gdp':
-                currentVisualization = await initHeatmap(container, currentYear);
-                break;
-            case 'internet':
-                currentVisualization = await initInternetMap(container, currentYear);
-                break;
-            default:
-                throw new Error('Unknown visualization type');
-        }
+        currentVisualization = await initHeatmap(container, currentYear);
     } catch (error) {
         console.error('Error loading visualization:', error);
         showError(container, 'Error loading visualization. Please try again.');
