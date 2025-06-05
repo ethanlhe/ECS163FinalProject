@@ -1,8 +1,8 @@
 export function createBarChart(container, data, options) {
     const {
-        width = 600,
-        height = 340,
-        margin = {top: 30, right: 120, bottom: 50, left: 80},
+        width = 700,
+        height = 500,
+        margin = {top: 30, right: 120, bottom: 80, left: 80},
         currentMode = 'gdp',
         formatGDP = (val) => val ? '$' + d3.format(',.2f')(val) : 'No data',
         sliderState = {start: 2000, end: 2020}

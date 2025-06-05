@@ -800,7 +800,7 @@ export async function initHeatmap(container, initialYear = 2000) {
             // --- Layout: sidebar + main content ---
             modalContent.innerHTML = `
                 <div style='display:flex;align-items:flex-start;'>
-                    <div id='modalSidebarContainer' style='min-width:0px;'></div>
+                    <div id='modalSidebarContainer' style='min-width:400px;'></div>
                     ${mainContentHtml}
                 </div>
             `;
@@ -826,8 +826,16 @@ export async function initHeatmap(container, initialYear = 2000) {
             const tabContents = modalContent.querySelectorAll('[data-tab-content]');
             tabButtons.forEach(btn => {
                 btn.addEventListener('click', () => {
-                    tabButtons.forEach(b => b.classList.remove('active'));
+                    // Remove active class and reset border from all buttons
+                    tabButtons.forEach(b => {
+                        b.classList.remove('active');
+                        b.style.borderBottom = '2px solid transparent';
+                    });
+                    // Add active class and set border for clicked button
                     btn.classList.add('active');
+                    btn.style.borderBottom = '2px solid #2171b5';
+                    
+                    // Show/hide content
                     tabContents.forEach(tc => {
                         tc.style.display = tc.getAttribute('data-tab-content') === btn.getAttribute('data-tab') ? '' : 'none';
                     });

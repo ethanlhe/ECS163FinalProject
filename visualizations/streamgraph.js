@@ -1,7 +1,7 @@
 export function createStreamGraph(container, data, options) {
     const {
         width = 600,
-        height = 340,
+        height = 440,
         margin = {top: 30, right: 120, bottom: 50, left: 80},
         currentMode = 'gdp',
         formatGDP = (val) => val ? '$' + d3.format(',.2f')(val) : 'No data',
@@ -95,7 +95,10 @@ export function createStreamGraph(container, data, options) {
     // X axis
     svg.append('g')
         .attr('transform', `translate(0,${height - margin.bottom})`)
-        .call(d3.axisBottom(x).tickFormat(d3.format('d')).tickSizeOuter(0))
+        .call(d3.axisBottom(x)
+            .tickFormat(d3.format('d'))
+            .ticks(Math.min(6, years.length))
+        )
         .call(g => g.select('.domain').attr('stroke','#bbb'))
         .call(g => g.selectAll('text').attr('font-size','13px').attr('fill','#444'));
 
