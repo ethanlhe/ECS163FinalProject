@@ -25,7 +25,7 @@ body {
 
 .dashboard-header h1 {
     font-size: 2.5em;
-    color: #2c3e50;
+    color: #000000;
     margin-bottom: 10px;
 }
 
@@ -53,7 +53,7 @@ body {
 }
 
 .tab-btn.active {
-    background-color: #3498db;
+    background-color: #5525c4;
     color: white;
 }
 
@@ -153,14 +153,14 @@ body {
     -webkit-appearance: none;
     width: 18px;
     height: 18px;
-    background: #3498db;
+    background: #5525c4;
     border-radius: 50%;
     cursor: pointer;
     transition: background 0.3s ease;
 }
 
 .year-selector input[type="range"]::-webkit-slider-thumb:hover {
-    background: #2980b9;
+    background: #5525c4;
 }
 
 .year-selector #year-value {
@@ -169,4 +169,23 @@ body {
     color: #2c3e50;
     min-width: 60px;
     text-align: center;
+}
+
+#heatmapToggle {
+    padding: 4px 10px;
+    background: #5525c4;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    font-size: .8em;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s, color 0.2s;
+    outline: none;
+    letter-spacing: 0.01em;
+}
+#heatmapToggle:hover {
+    background: #271158;
+    color: #eaf6fb;
+    box-shadow: 0 4px 16px rgba(33, 113, 181, 0.13);
 }
