@@ -51,6 +51,17 @@ export async function initHeatmap(container, initialYear = 2000) {
         .attr('class', 'responsive-svg')
         .attr('viewBox', `0 0 ${width} ${height}`);
 
+    // Add pattern for "no data"
+    svg.append('defs').append('pattern')
+        .attr('id', 'no-data-pattern')
+        .attr('width', 6)
+        .attr('height', 6)
+        .attr('patternUnits', 'userSpaceOnUse')
+        .append('path')
+        .attr('d', 'M0,0 l6,6 M6,0 l-6,6')
+        .attr('stroke', '#bbb')
+        .attr('stroke-width', 1);
+
     // Create tooltip div
     const tooltip = d3.select(container)
         .append('div')
@@ -81,6 +92,11 @@ export async function initHeatmap(container, initialYear = 2000) {
             }));
         }).filter(d => d.value !== null);
 
+        // Calculate global percentiles for all years
+        const allValues = processedGdpData.map(d => d.value).sort((a, b) => a - b);
+        const globalP10 = d3.quantile(allValues, 0.1);
+        const globalP90 = d3.quantile(allValues, 0.9);
+
         // Create a map of all years' data for quick lookup
         const gdpDataMap = new Map();
         processedGdpData.forEach(d => {
@@ -107,9 +123,10 @@ export async function initHeatmap(container, initialYear = 2000) {
             .attr('stroke', '#222')
             .attr('stroke-width', 0.7);
 
-        // Create color scale
-        const colorScale = d3.scaleSequential(d3.interpolateYlGnBu)
-            .domain([0, 1]); // Will be updated with actual data
+        // Custom interpolator: green (low) to blue (high)
+        const customInterpolator = d3.interpolateRgbBasis(["#b7e075", "#4fa49a", "#2171b5"]); // green to blue
+        let colorScale = d3.scaleSequential(customInterpolator)
+            .domain([globalP10, globalP90]); // Fixed domain for all years
 
         // Function to update the visualization
         function update(year) {
@@ -121,17 +138,11 @@ export async function initHeatmap(container, initialYear = 2000) {
                 value: yearMap.get(year)
             })).filter(d => d.value !== undefined);
 
-            // Calculate color scale domain using a more appropriate range
-            const values = yearData.map(d => d.value).sort((a, b) => a - b);
-            const p10 = d3.quantile(values, 0.1);  // Use 10th percentile instead of 5th
-            const p90 = d3.quantile(values, 0.9);  // Use 90th percentile instead of 95th
-            colorScale.domain([p10, p90]);
-
             // Update country colors
             countries
                 .attr('fill', d => {
                     const countryData = yearData.find(c => c.country === getCountryName(d.properties.name));
-                    return countryData ? colorScale(countryData.value) : '#bbb';
+                    return countryData ? colorScale(countryData.value) : 'url(#no-data-pattern)';
                 });
 
             // Update tooltip content
@@ -156,7 +167,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 });
 
             // Update legend
-            updateLegend(p10, p90);
+            updateLegend(globalP10, globalP90);
         }
 
         // Function to update the legend
@@ -170,8 +181,8 @@ export async function initHeatmap(container, initialYear = 2000) {
             const legendSvg = d3.select(container)
                 .append('svg')
                 .attr('class', 'legend-svg')
-                .attr('width', legendWidth)
-                .attr('height', legendHeight + 30)
+                .attr('width', legendWidth + 80)
+                .attr('height', legendHeight + 40)
                 .style('display', 'block')
                 .style('margin', '30px auto 0 auto');
 
@@ -183,7 +194,7 @@ export async function initHeatmap(container, initialYear = 2000) {
                 .data(d3.range(0, 1.01, 0.01))
                 .enter().append('stop')
                 .attr('offset', d => `${d * 100}%`)
-                .attr('stop-color', d => colorScale(min + d * (max - min)));
+                .attr('stop-color', d => customInterpolator(d));
 
             // Add gradient rectangle
             legendSvg.append('rect')
@@ -193,19 +204,34 @@ export async function initHeatmap(container, initialYear = 2000) {
                 .attr('height', legendHeight)
                 .style('fill', 'url(#legend-gradient)');
 
+            // Add "No data" swatch
+            legendSvg.append('rect')
+                .attr('x', legendWidth + 20)
+                .attr('y', -4)
+                .attr('width', 24)
+                .attr('height', legendHeight)
+                .style('fill', 'url(#no-data-pattern)');
+
+            legendSvg.append('text')
+                .attr('x', legendWidth + 48)
+                .attr('y', legendHeight + 6)
+                .attr('text-anchor', 'start')
+                .attr('font-size', '13px')
+                .text('No data');
+
             // Add labels
             legendSvg.append('text')
                 .attr('x', 0)
                 .attr('y', legendHeight + 12)
                 .attr('text-anchor', 'start')
                 .attr('font-size', '13px')
-                .text(`$${d3.format(',.2f')(min)}`);
+                .text(`$${d3.format(',.2f')(globalP10)}`);
             legendSvg.append('text')
                 .attr('x', legendWidth)
                 .attr('y', legendHeight + 12)
                 .attr('text-anchor', 'end')
                 .attr('font-size', '13px')
-                .text(`$${d3.format(',.2f')(max)}`);
+                .text(`$${d3.format(',.2f')(globalP90)}`);
             legendSvg.append('text')
                 .attr('x', legendWidth / 2)
                 .attr('y', legendHeight + 28)

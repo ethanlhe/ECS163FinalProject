@@ -81,6 +81,11 @@ export async function initInternetMap(container, initialYear = 2000) {
             }));
         }).filter(d => d.value !== null);
 
+        // Calculate global percentiles for all years
+        const allValues = processedInternetData.map(d => d.value).sort((a, b) => a - b);
+        const globalP10 = d3.quantile(allValues, 0.1);
+        const globalP90 = d3.quantile(allValues, 0.9);
+
         // Create a map of all years' data for quick lookup
         const internetDataMap = new Map();
         processedInternetData.forEach(d => {
@@ -107,9 +112,10 @@ export async function initInternetMap(container, initialYear = 2000) {
             .attr('stroke', '#222')
             .attr('stroke-width', 0.7);
 
-        // Create color scale (using a different color scheme for Internet access)
-        const colorScale = d3.scaleSequential(d3.interpolateViridis)
-            .domain([0, 100]); // Internet access is typically shown as percentage
+        // Use a green-to-blue custom interpolator for comparability
+        const customInterpolator = d3.interpolateRgbBasis(["#b7e075", "#4fa49a", "#2171b5"]); // green to blue
+        let colorScale = d3.scaleSequential(customInterpolator)
+            .domain([globalP10, globalP90]); // Fixed domain for all years
 
         // Function to update the visualization
         function update(year) {
@@ -177,7 +183,7 @@ export async function initInternetMap(container, initialYear = 2000) {
                 .data(d3.range(0, 1.01, 0.01))
                 .enter().append('stop')
                 .attr('offset', d => `${d * 100}%`)
-                .attr('stop-color', d => colorScale(d * 100));
+                .attr('stop-color', d => customInterpolator(d));
 
             // Add gradient rectangle
             legendSvg.append('rect')
@@ -193,13 +199,13 @@ export async function initInternetMap(container, initialYear = 2000) {
                 .attr('y', legendHeight + 18)
                 .attr('text-anchor', 'start')
                 .attr('font-size', '13px')
-                .text('0%');
+                .text(`${d3.format('.1f')(globalP10)}%`);
             legendSvg.append('text')
                 .attr('x', legendWidth)
                 .attr('y', legendHeight + 18)
                 .attr('text-anchor', 'end')
                 .attr('font-size', '13px')
-                .text('100%');
+                .text(`${d3.format('.1f')(globalP90)}%`);
             legendSvg.append('text')
                 .attr('x', legendWidth / 2)
                 .attr('y', legendHeight + 28)
